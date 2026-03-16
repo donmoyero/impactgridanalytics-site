@@ -1,0 +1,3668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+  <meta charset="UTF-8">
+  <title>ImpactGrid | SME Financial Stability Engine</title>
+
+  <!-- GUEST MODE: allow first try free, gate everything after -->
+  <script>
+    (function() {
+      // Check if already logged in — if so, proceed normally
+      var hasSession = false;
+      try {
+        if (window.location.hash && window.location.hash.indexOf('access_token') !== -1) hasSession = true;
+        if (!hasSession && window.location.search.indexOf('code=') !== -1) hasSession = true;
+        if (!hasSession) {
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf('auth-token') !== -1) {
+              try {
+                var val = JSON.parse(localStorage.getItem(k));
+                if (val && (val.access_token || (val.session && val.session.access_token))) {
+                  hasSession = true; break;
+                }
+              } catch(e) {}
+            }
+          }
+        }
+      } catch(e) { hasSession = true; }
+      // Mark guest or logged-in state — do not redirect, just track
+      window.__igLoggedIn = hasSession;
+      window.__igGuestUsed = false; // flips to true after first free try
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="ImpactGrid — Know if your business is healthy. Know exactly what to do next.">
+  <link rel="icon" href="logo.png">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css?v=6">
+
+  <!-- PDF engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-97XD9941FC"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-97XD9941FC');
+  </script>
+  <!-- Mammoth for Word import -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <!-- PDF.js for PDF import -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    if (typeof pdfjsLib !== "undefined") {
+      pdfjsLib.GlobalWorkerOptions.workerSrc =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    }
+  </script>
+
+  <!-- CRITICAL LAYOUT v6 -->
+  <style>
+    html, body { height: 100%; margin: 0; padding: 0; }
+
+    .mobile-topbar { display: none; }
+    #mobileBottomNav { display: none; }
+    #sbOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 350; }
+
+    .app-layout {
+      display: block !important;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 260px !important;
+      height: 100vh !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      z-index: 100 !important;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    .sidebar.collapsed { width: 64px !important; }
+
+    .main-content {
+      margin-left: 260px !important;
+      min-height: 100vh;
+    }
+
+    .sidebar.collapsed ~ .main-content,
+    body.sidebar-collapsed .main-content {
+      margin-left: 64px !important;
+    }
+
+    @media (max-width: 900px) {
+      .mobile-topbar  { display: flex !important; position: fixed; top:0; left:0; right:0; height:58px; z-index:300; }
+      #mobileBottomNav { display: flex !important; position: fixed; bottom:0; left:0; right:0; height:62px; z-index:300; }
+      .app-layout { padding-top: 58px !important; }
+      .sidebar {
+        width: 280px !important;
+        transform: translateX(-100%) !important;
+        transition: transform 0.3s ease !important;
+        z-index: 400 !important;
+      }
+      .sidebar.mob-open { transform: translateX(0) !important; }
+      .main-content { margin-left: 0 !important; padding-bottom: 80px !important; }
+      #sbOverlay { display: none; }
+      #sbOverlay.mob-visible { display: block !important; }
+    }
+  
+
+/* ================================================================
+   IMPACTGRID AI BUDDY — Styles (Light + Dark mode)
+================================================================ */
+
+/* ── Light mode defaults ── */
+.buddy-header {
+  display: flex; align-items: center; gap: 18px;
+  padding: 22px 28px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  margin-bottom: 16px;
+  position: relative; overflow: hidden;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: background 0.3s, border-color 0.3s;
+}
+body.dark-mode .buddy-header, body.dark .buddy-header,
+[data-theme="dark"] .buddy-header {
+  background: linear-gradient(135deg, rgba(14,18,32,0.95), rgba(10,13,24,0.98));
+  border-color: rgba(200,169,110,0.2);
+  box-shadow: none;
+}
+
+/* ── Avatar ── */
+.buddy-avatar-wrap { flex-shrink: 0; }
+.buddy-avatar {
+  width: 56px; height: 56px;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.buddy-avatar-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 1.5px solid rgba(200,169,110,0.4);
+  animation: buddy-ring-spin 8s linear infinite;
+  background: conic-gradient(from 0deg, rgba(200,169,110,0.3), transparent 60%, rgba(200,169,110,0.1), transparent);
+}
+@keyframes buddy-ring-spin { to { transform: rotate(360deg); } }
+.buddy-avatar-inner {
+  width: 44px; height: 44px; border-radius: 50%;
+  background: linear-gradient(135deg, rgba(200,169,110,0.15), rgba(200,169,110,0.08));
+  border: 1px solid rgba(200,169,110,0.3);
+  display: flex; align-items: center; justify-content: center;
+}
+.buddy-status-dot {
+  position: absolute; bottom: 2px; right: 2px;
+  width: 11px; height: 11px; border-radius: 50%;
+  background: #2dd4a0;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 8px rgba(45,212,160,0.6);
+  animation: buddy-pulse 2.5s ease-in-out infinite;
+}
+body.dark-mode .buddy-status-dot, body.dark .buddy-status-dot,
+[data-theme="dark"] .buddy-status-dot {
+  border-color: #06080f;
+}
+@keyframes buddy-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(45,212,160,0.6); }
+  50% { box-shadow: 0 0 16px rgba(45,212,160,0.9); }
+}
+
+/* ── Header text ── */
+.buddy-header-text { flex: 1; min-width: 0; }
+.buddy-name {
+  font-family: 'Plus Jakarta Sans', 'DM Sans', sans-serif;
+  font-size: 18px; font-weight: 800;
+  letter-spacing: -0.02em; line-height: 1.2;
+  color: #0f1629;
+  transition: color 0.3s;
+}
+body.dark-mode .buddy-name, body.dark .buddy-name,
+[data-theme="dark"] .buddy-name { color: #edf0f7; }
+
+.buddy-tagline {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: #94a3b8;
+  letter-spacing: 0.06em; margin-top: 4px;
+}
+body.dark-mode .buddy-tagline, body.dark .buddy-tagline,
+[data-theme="dark"] .buddy-tagline { color: #3d4e68; }
+
+/* ── Model badge ── */
+.buddy-model-badge {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 14px;
+  background: rgba(45,212,160,0.06);
+  border: 1px solid rgba(45,212,160,0.2);
+  border-radius: 20px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: #2dd4a0;
+  letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0;
+}
+.buddy-model-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #2dd4a0;
+  animation: buddy-pulse 2.5s ease-in-out infinite;
+}
+.buddy-model-badge.offline { color: #ff4d6d; border-color: rgba(255,77,109,0.2); background: rgba(255,77,109,0.06); }
+.buddy-model-badge.offline .buddy-model-dot { background: #ff4d6d; }
+
+/* ── Config bar ── */
+.buddy-config-bar {
+  padding: 10px 20px;
+  background: #f8faff;
+  border: 1px solid #e8edf5;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  transition: background 0.3s, border-color 0.3s;
+}
+body.dark-mode .buddy-config-bar, body.dark .buddy-config-bar,
+[data-theme="dark"] .buddy-config-bar {
+  background: rgba(10,13,24,0.8);
+  border-color: rgba(200,169,110,0.12);
+}
+.buddy-config-inner {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: #94a3b8;
+}
+.buddy-connect-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.05em;
+}
+.buddy-connect-status.ok  { color: #2dd4a0; }
+.buddy-connect-status.err { color: #ff4d6d; }
+
+/* ── Chat window ── */
+.buddy-chat-wrap {
+  background: #f8faff;
+  border: 1px solid #e8edf5;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+  transition: background 0.3s, border-color 0.3s;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+}
+body.dark-mode .buddy-chat-wrap, body.dark .buddy-chat-wrap,
+[data-theme="dark"] .buddy-chat-wrap {
+  background: linear-gradient(180deg, rgba(6,8,15,0.98) 0%, rgba(10,13,24,0.95) 100%);
+  border-color: rgba(200,169,110,0.14);
+  box-shadow: none;
+}
+
+/* ── Messages area ── */
+.buddy-chat-output {
+  flex: 1; min-height: 380px; max-height: 520px;
+  overflow-y: auto;
+  padding: 24px 24px 12px;
+  display: flex; flex-direction: column; gap: 16px;
+  scroll-behavior: smooth;
+  background: transparent;
+}
+.buddy-chat-output::-webkit-scrollbar { width: 4px; }
+.buddy-chat-output::-webkit-scrollbar-track { background: transparent; }
+.buddy-chat-output::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+body.dark-mode .buddy-chat-output::-webkit-scrollbar-thumb,
+body.dark .buddy-chat-output::-webkit-scrollbar-thumb,
+[data-theme="dark"] .buddy-chat-output::-webkit-scrollbar-thumb { background: rgba(200,169,110,0.2); }
+
+/* ── Messages ── */
+.buddy-msg {
+  display: flex; gap: 12px; align-items: flex-start;
+  animation: buddy-msg-in 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes buddy-msg-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.buddy-msg.user { flex-direction: row-reverse; }
+
+.buddy-msg-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+}
+.buddy-msg.ai .buddy-msg-avatar {
+  background: linear-gradient(135deg, rgba(200,169,110,0.15), rgba(200,169,110,0.08));
+  border: 1px solid rgba(200,169,110,0.3);
+  color: #c8a96e;
+}
+.buddy-msg.user .buddy-msg-avatar {
+  background: linear-gradient(135deg, #1a3a6a, #2563eb);
+  border: none;
+  color: #fff;
+}
+
+/* ── Bubbles LIGHT mode ── */
+.buddy-msg-bubble {
+  max-width: 75%;
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px; line-height: 1.7;
+}
+.buddy-msg.ai .buddy-msg-bubble {
+  background: #ffffff;
+  border: 1px solid #e8edf5;
+  color: #374151;
+  border-top-left-radius: 4px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.05);
+}
+.buddy-msg.user .buddy-msg-bubble {
+  background: linear-gradient(135deg, #1a3a6a, #2563eb);
+  border: none;
+  color: #fff;
+  border-top-right-radius: 4px;
+  box-shadow: 0 2px 12px rgba(37,99,235,0.25);
+}
+
+/* ── Bubbles DARK mode ── */
+body.dark-mode .buddy-msg.ai .buddy-msg-bubble,
+body.dark .buddy-msg.ai .buddy-msg-bubble,
+[data-theme="dark"] .buddy-msg.ai .buddy-msg-bubble {
+  background: rgba(200,169,110,0.05);
+  border-color: rgba(200,169,110,0.12);
+  color: #a0b0cc;
+}
+body.dark-mode .buddy-msg.user .buddy-msg-bubble,
+body.dark .buddy-msg.user .buddy-msg-bubble,
+[data-theme="dark"] .buddy-msg.user .buddy-msg-bubble {
+  background: rgba(45,212,160,0.07);
+  border: 1px solid rgba(45,212,160,0.15);
+  color: #edf0f7;
+}
+
+.buddy-msg-bubble strong { font-weight: 600; }
+.buddy-msg.ai .buddy-msg-bubble strong { color: #0f1629; }
+body.dark-mode .buddy-msg.ai .buddy-msg-bubble strong,
+body.dark .buddy-msg.ai .buddy-msg-bubble strong,
+[data-theme="dark"] .buddy-msg.ai .buddy-msg-bubble strong { color: #edf0f7; }
+.buddy-msg.user .buddy-msg-bubble strong { color: #fff; }
+
+.buddy-msg-bubble .buddy-msg-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.1em;
+  color: #c8a96e; font-weight: 700;
+  margin-bottom: 6px; display: block; text-transform: uppercase;
+}
+
+/* ── Typing indicator ── */
+.buddy-typing {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 24px;
+}
+.buddy-typing-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(200,169,110,0.1);
+  border: 1px solid rgba(200,169,110,0.2);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; color: #c8a96e; font-weight: 700;
+}
+.buddy-typing-dots {
+  display: flex; gap: 5px; align-items: center;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1px solid #e8edf5;
+  border-radius: 12px;
+}
+body.dark-mode .buddy-typing-dots,
+body.dark .buddy-typing-dots,
+[data-theme="dark"] .buddy-typing-dots {
+  background: rgba(200,169,110,0.04);
+  border-color: rgba(200,169,110,0.1);
+}
+.buddy-typing-dots span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #94a3b8;
+  animation: buddy-dot-bounce 1.4s ease-in-out infinite;
+}
+body.dark-mode .buddy-typing-dots span,
+body.dark .buddy-typing-dots span,
+[data-theme="dark"] .buddy-typing-dots span { background: rgba(200,169,110,0.5); }
+.buddy-typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.buddy-typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes buddy-dot-bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40% { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ── Chips ── */
+.buddy-chips {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  padding: 12px 24px;
+  border-top: 1px solid #f1f5f9;
+}
+body.dark-mode .buddy-chips,
+body.dark .buddy-chips,
+[data-theme="dark"] .buddy-chips { border-top-color: rgba(200,169,110,0.07); }
+.buddy-chip {
+  padding: 6px 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  color: #475569;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 11.5px;
+  cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.buddy-chip:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+  transform: translateY(-1px);
+}
+body.dark-mode .buddy-chip,
+body.dark .buddy-chip,
+[data-theme="dark"] .buddy-chip {
+  background: rgba(200,169,110,0.05);
+  border-color: rgba(200,169,110,0.18);
+  color: #a0b0cc;
+}
+body.dark-mode .buddy-chip:hover,
+body.dark .buddy-chip:hover,
+[data-theme="dark"] .buddy-chip:hover {
+  background: rgba(200,169,110,0.12);
+  border-color: rgba(200,169,110,0.35);
+  color: #c8a96e;
+}
+
+/* ── Input row ── */
+.buddy-input-row {
+  display: flex; gap: 10px; align-items: center;
+  padding: 16px 24px 20px;
+  border-top: 1px solid #f1f5f9;
+  background: #ffffff;
+  transition: background 0.3s, border-color 0.3s;
+}
+body.dark-mode .buddy-input-row,
+body.dark .buddy-input-row,
+[data-theme="dark"] .buddy-input-row {
+  border-top-color: rgba(200,169,110,0.08);
+  background: transparent;
+}
+.buddy-input-wrap {
+  flex: 1; display: flex; align-items: center;
+  background: #f8faff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px; overflow: hidden;
+  transition: border-color 0.2s, background 0.3s;
+}
+.buddy-input-wrap:focus-within { border-color: #93c5fd; }
+body.dark-mode .buddy-input-wrap,
+body.dark .buddy-input-wrap,
+[data-theme="dark"] .buddy-input-wrap {
+  background: rgba(6,8,15,0.9);
+  border-color: rgba(200,169,110,0.2);
+}
+body.dark-mode .buddy-input-wrap:focus-within,
+body.dark .buddy-input-wrap:focus-within,
+[data-theme="dark"] .buddy-input-wrap:focus-within { border-color: rgba(200,169,110,0.45); }
+
+.buddy-input {
+  flex: 1; padding: 13px 16px;
+  background: transparent; border: none; outline: none;
+  font-family: 'DM Sans', sans-serif; font-size: 13.5px;
+  color: #0f1629; transition: color 0.3s;
+}
+body.dark-mode .buddy-input,
+body.dark .buddy-input,
+[data-theme="dark"] .buddy-input { color: #edf0f7; }
+.buddy-input::placeholder { color: #94a3b8; }
+
+.buddy-send-btn {
+  width: 44px; height: 44px;
+  background: linear-gradient(135deg, #1a3a6a, #2563eb);
+  border: none; border-radius: 10px; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; margin: 4px; flex-shrink: 0;
+  transition: opacity 0.2s, transform 0.1s;
+  box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+}
+.buddy-send-btn:hover { opacity: 0.85; transform: scale(1.05); }
+.buddy-send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+.buddy-clear-btn {
+  width: 36px; height: 36px;
+  background: rgba(255,77,109,0.06);
+  border: 1px solid rgba(255,77,109,0.15);
+  border-radius: 8px;
+  color: rgba(255,77,109,0.6);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; flex-shrink: 0; transition: all 0.2s;
+}
+.buddy-clear-btn:hover { background: rgba(255,77,109,0.12); color: #ff4d6d; }
+
+/* ── Markdown formatting ── */
+.buddy-msg-bubble ul { padding-left: 18px; margin: 8px 0; }
+.buddy-msg-bubble li { margin-bottom: 4px; }
+.buddy-msg-bubble p  { margin: 0 0 8px; }
+.buddy-msg-bubble p:last-child { margin-bottom: 0; }
+.buddy-msg-bubble code {
+  background: rgba(200,169,110,0.1);
+  border-radius: 4px; padding: 1px 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: #c8a96e;
+}
+
+
+/* ── data-buddy-theme fallback selectors ── */
+[data-buddy-theme="dark"].buddy-header,
+[data-buddy-theme="dark"] .buddy-header {
+  background: linear-gradient(135deg, rgba(14,18,32,0.95), rgba(10,13,24,0.98)) !important;
+  border-color: rgba(200,169,110,0.2) !important;
+  box-shadow: none !important;
+}
+[data-buddy-theme="dark"].buddy-chat-wrap,
+[data-buddy-theme="dark"] .buddy-chat-wrap {
+  background: linear-gradient(180deg, rgba(6,8,15,0.98) 0%, rgba(10,13,24,0.95) 100%) !important;
+  border-color: rgba(200,169,110,0.14) !important;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ── MOBILE: Top Bar ── -->
+<header class="mobile-topbar">
+  <button class="mob-hamburger" onclick="toggleMobileMenu()" id="mobileMenuBtn" aria-label="Open menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="mobile-topbar-logo">
+    <img src="logo.png" alt="ImpactGrid">
+    <div>
+      <div class="mobile-topbar-logo-text">ImpactGrid</div>
+      <div class="mobile-topbar-badge">ImpactGrid</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <label class="theme-switch" title="Toggle dark/light mode">
+      <input type="checkbox" id="themeSwitchMobile" onchange="toggleTheme(this.checked)">
+      <span class="theme-switch-track">
+        <span class="theme-switch-icon dark-icon">🌙</span>
+        <span class="theme-switch-icon light-icon">☀️</span>
+        <span class="theme-switch-thumb"></span>
+      </span>
+    </label>
+    <button onclick="logout()" class="topbar-logout-btn" aria-label="Logout">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </button>
+  </div>
+</header>
+
+<!-- ── MOBILE: Bottom Navigation ── -->
+<nav id="mobileBottomNav">
+  <button class="mob-nav-btn active" onclick="mobileNav('dashboard',this)">
+    <span class="mob-icon">◈</span>
+    <span class="mob-label">Overview</span>
+  </button>
+  <button class="mob-nav-btn" onclick="mobileNav('charts',this)">
+    <span class="mob-icon">◉</span>
+    <span class="mob-label">Charts</span>
+  </button>
+  <button class="mob-nav-btn" onclick="mobileNav('ai',this)">
+    <span class="mob-icon">◎</span>
+    <span class="mob-label">Dijo</span>
+  </button>
+  <button class="mob-nav-btn" onclick="mobileNav('risk',this)">
+    <span class="mob-icon">◬</span>
+    <span class="mob-label">Risk</span>
+  </button>
+  <button class="mob-nav-btn" onclick="mobileNav('report',this)">
+    <span class="mob-icon">⊡</span>
+    <span class="mob-label">Report</span>
+  </button>
+</nav>
+
+<div id="sbOverlay" onclick="closeMobileMenu()"></div>
+
+<div id="app" class="app-layout">
+
+  <!-- ================================================
+       SIDEBAR
+  ================================================ -->
+
+  <aside class="sidebar" id="sidebar">
+
+    <div class="logo-container">
+      <img src="logo.png" alt="ImpactGrid Logo" class="logo-img">
+      <div>
+        <span class="logo-text">ImpactGrid</span>
+        <div style="font-size:9px;color:var(--text-muted);margin-top:2px;font-family:'JetBrains Mono',monospace;letter-spacing:0.10em;text-transform:uppercase;">v3.0</div>
+      </div>
+    </div>
+
+    <nav>
+      <div id="sidebarCloseBtn" style="display:none;">
+        <span class="close-label">Navigation</span>
+        <button onclick="closeMobileMenu()" aria-label="Close menu">&times;</button>
+      </div>
+
+      <div class="sidebar-label">Navigation</div>
+      <ul>
+        <li onclick="showSection('dashboard', event)" class="active">
+          <span style="margin-right:10px;opacity:0.6;">◈</span> Financial Overview
+        </li>
+        <li onclick="showSection('charts', event)">
+          <span style="margin-right:10px;opacity:0.6;">◉</span> Operational Charts
+        </li>
+        <li onclick="showSection('matrix', event)">
+          <span style="margin-right:10px;opacity:0.6;">⊞</span> Performance Matrix
+        </li>
+        <li onclick="showSection('risk', event)">
+          <span style="margin-right:10px;opacity:0.6;">◬</span> Risk Assessment
+        </li>
+        <li onclick="showSection('ai', event)">
+          <span style="margin-right:10px;opacity:0.6;">◎</span> ImpactGrid AI
+        </li>
+        <li onclick="showSection('report', event)">
+          <span style="margin-right:10px;opacity:0.6;">⊡</span> Reports
+        </li>
+        <li onclick="showSection('upgrade', event)" style="margin-top:8px;border-top:1px solid var(--border);padding-top:12px;">
+          <span style="margin-right:10px;opacity:0.6;">⬆</span> Upgrade Plan
+        </li>
+        <li onclick="toggleRecordsPanel()" id="navRecords">
+          <span style="margin-right:10px;opacity:0.6;">📋</span> Records
+        </li>
+        <li onclick="window.location.href='settings.html'">
+          <span style="margin-right:10px;opacity:0.6;">⚙</span> Settings
+        </li>
+      </ul>
+
+      <div class="sidebar-theme-row" style="margin-top:16px;">
+        <span class="sidebar-theme-label">
+          <span class="theme-mode-icon" id="themeModeIcon">☀️</span>
+          <span id="themeModeLabel">Light</span>
+        </span>
+        <label class="theme-switch">
+          <input type="checkbox" id="themeSwitchSidebar" onchange="toggleTheme(this.checked)">
+          <span class="theme-switch-track">
+            <span class="theme-switch-thumb"></span>
+          </span>
+        </label>
+      </div>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div id="autosaveBadge" style="opacity:0;transition:opacity 0.4s;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--success);letter-spacing:0.08em;margin-bottom:8px;">✓ Data saved</div>
+      <div id="usageBar" style="margin-bottom:8px;"></div>
+
+      <div class="sidebar-user-chip">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+          <div class="sidebar-avatar" id="sidebarAvatar">U</div>
+          <div style="min-width:0;">
+            <div id="sidebarUserEmail" style="font-size:10px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;"></div>
+            <span id="planBadge" class="plan-badge plan-basic" style="margin-top:2px;display:inline-block;">Basic</span>
+          </div>
+        </div>
+        <button onclick="toggleSidebar()" class="chip-icon-btn" title="Collapse sidebar">◁</button>
+      </div>
+
+      <button onclick="logout()" class="sidebar-logout-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign Out
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ================================================
+       MAIN CONTENT
+  ================================================ -->
+
+  <main class="main-content">
+
+    <!-- 30-Day Free Trial Banner -->
+    <style>
+      #trialBanner {
+        display: none;
+        position: relative;
+        overflow: hidden;
+        border-radius: 16px;
+        margin-bottom: 24px;
+        padding: 0;
+      }
+      #trialBanner .tb-inner {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 16px 22px;
+        position: relative;
+        z-index: 1;
+        flex-wrap: wrap;
+      }
+      #trialBanner::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: linear-gradient(135deg, #0f1629 0%, #1a2540 50%, #0f1629 100%);
+        z-index: 0;
+      }
+      #trialBanner::after {
+        content: '';
+        position: absolute; inset: 0;
+        background: linear-gradient(105deg, transparent 40%, rgba(200,169,110,0.07) 60%, transparent 80%);
+        z-index: 0;
+        animation: tb-shimmer 4s ease-in-out infinite;
+      }
+      @keyframes tb-shimmer {
+        0%, 100% { opacity: 0; }
+        50% { opacity: 1; }
+      }
+      #trialBanner .tb-border {
+        position: absolute; inset: 0;
+        border-radius: 16px;
+        border: 1px solid rgba(200,169,110,0.3);
+        pointer-events: none;
+        z-index: 2;
+      }
+      #trialBanner.tb-urgent::before {
+        background: linear-gradient(135deg, #1a0f0f 0%, #2a1515 50%, #1a0f0f 100%);
+      }
+      #trialBanner.tb-urgent .tb-border {
+        border-color: rgba(255,77,109,0.4);
+      }
+
+      .tb-icon {
+        width: 44px; height: 44px; border-radius: 12px;
+        background: linear-gradient(135deg, rgba(200,169,110,0.2), rgba(200,169,110,0.08));
+        border: 1px solid rgba(200,169,110,0.25);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 20px; flex-shrink: 0;
+      }
+      .tb-urgent .tb-icon {
+        background: linear-gradient(135deg, rgba(255,77,109,0.15), rgba(255,77,109,0.06));
+        border-color: rgba(255,77,109,0.3);
+      }
+
+      .tb-text { flex: 1; min-width: 200px; }
+      .tb-title {
+        font-family: 'DM Sans', sans-serif;
+        font-size: 14px; font-weight: 700;
+        color: #fff; margin-bottom: 3px;
+        display: flex; align-items: center; gap: 8px;
+      }
+      .tb-pulse {
+        display: inline-block;
+        width: 7px; height: 7px; border-radius: 50%;
+        background: #2dd4a0;
+        box-shadow: 0 0 0 0 rgba(45,212,160,0.5);
+        animation: tb-pulse 1.8s ease-out infinite;
+      }
+      .tb-urgent .tb-pulse { background: #ff4d6d; box-shadow: 0 0 0 0 rgba(255,77,109,0.5); }
+      @keyframes tb-pulse {
+        0%   { box-shadow: 0 0 0 0 rgba(45,212,160,0.5); }
+        70%  { box-shadow: 0 0 0 7px rgba(45,212,160,0); }
+        100% { box-shadow: 0 0 0 0 rgba(45,212,160,0); }
+      }
+      .tb-sub {
+        font-size: 12px; font-family: 'DM Sans', sans-serif;
+        color: rgba(255,255,255,0.5); line-height: 1.5;
+      }
+      .tb-sub strong { color: rgba(255,255,255,0.85); }
+
+      .tb-days-block {
+        text-align: center; flex-shrink: 0;
+        padding: 0 4px;
+      }
+      .tb-days-number {
+        font-family: 'Fraunces', serif;
+        font-size: 36px; font-weight: 700; line-height: 1;
+        color: #d4a043; letter-spacing: -1px;
+      }
+      .tb-urgent .tb-days-number { color: #ff4d6d; }
+      .tb-days-label {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 9px; letter-spacing: 0.12em;
+        text-transform: uppercase; color: rgba(255,255,255,0.35);
+        margin-top: 2px;
+      }
+
+      .tb-divider {
+        width: 1px; height: 40px; flex-shrink: 0;
+        background: rgba(255,255,255,0.08);
+      }
+
+      .tb-meta {
+        flex-shrink: 0; display: flex; flex-direction: column; gap: 5px;
+      }
+      .tb-meta-row {
+        display: flex; align-items: center; gap: 7px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px; color: rgba(255,255,255,0.4);
+        letter-spacing: 0.04em;
+      }
+      .tb-meta-row::before { content: '✓'; color: #2dd4a0; font-weight: 700; }
+      .tb-urgent .tb-meta-row::before { content: '!'; color: #ff4d6d; }
+
+      .tb-progress-wrap {
+        position: absolute; bottom: 0; left: 0; right: 0; height: 3px;
+        background: rgba(255,255,255,0.06); z-index: 3;
+      }
+      .tb-progress-bar {
+        height: 100%;
+        background: linear-gradient(to right, #8a6020, #d4a043);
+        border-radius: 0 2px 2px 0;
+        transition: width 0.5s ease;
+      }
+      .tb-urgent .tb-progress-bar { background: linear-gradient(to right, #991b1b, #ff4d6d); }
+    </style>
+
+    <div id="trialBanner">
+      <div class="tb-border"></div>
+      <div class="tb-inner">
+        <div class="tb-icon">🎁</div>
+        <div class="tb-text">
+          <div class="tb-title">
+            <span class="tb-pulse"></span>
+            30-Day Free Trial Active
+          </div>
+          <div class="tb-sub">Full access to all <strong>ImpactGrid features</strong> — no payment taken until your trial ends.</div>
+        </div>
+        <div class="tb-divider"></div>
+        <div class="tb-days-block">
+          <div class="tb-days-number" id="trialDaysLeft">30</div>
+          <div class="tb-days-label">Days Left</div>
+        </div>
+        <div class="tb-divider"></div>
+        <div class="tb-meta">
+          <div class="tb-meta-row">No credit card charge yet</div>
+          <div class="tb-meta-row">Cancel anytime</div>
+          <div class="tb-meta-row">Full feature access</div>
+        </div>
+      </div>
+      <div class="tb-progress-wrap">
+        <div class="tb-progress-bar" id="trialProgressBar" style="width:100%;"></div>
+      </div>
+    </div>
+
+    <!-- Plan expired banner -->
+    <div id="planExpiredBanner" style="display:none;align-items:center;gap:14px;padding:14px 20px;background:rgba(255,77,109,0.08);border:1px solid rgba(255,77,109,0.25);border-radius:10px;margin-bottom:20px;">
+      <span style="font-size:18px;">⚠</span>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:700;color:#ff4d6d;margin-bottom:2px;">Your data storage has expired</div>
+        <div style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Your saved data has been cleared. Upgrade to Professional to keep your data for 6 months.</div>
+      </div>
+      <a href="https://buy.stripe.com/aFa5kwaAg6Pedn64zC8N201" target="_blank" style="padding:9px 18px;background:linear-gradient(135deg,#b8923e,#e2c98a);color:#06080f;font-weight:700;font-size:12px;border-radius:8px;text-decoration:none;white-space:nowrap;">Upgrade Now</a>
+    </div>
+
+    <!-- Header -->
+    <header class="dashboard-header">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:8px;">
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px rgba(200,169,110,0.9);flex-shrink:0;animation:pulse-dot 2s ease-in-out infinite;"></div>
+        <p style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--gold-dim);letter-spacing:0.16em;text-transform:uppercase;">
+          ImpactGrid · Live Financial Intelligence
+        </p>
+      </div>
+      <h1>ImpactGrid <em>Analytics</em></h1>
+      <p class="engine-subtitle">Know if your business is healthy &nbsp;·&nbsp; Know exactly what to do next</p>
+    </header>
+
+
+    <!-- ============================================
+         SECTION: DASHBOARD
+    ============================================ -->
+
+    <section id="dashboard" class="page-section active-section">
+
+      <section class="card">
+        <h2>Business Profile &amp; Reporting Context</h2>
+        <div class="grid">
+          <div>
+            <label>Business Start Date</label>
+            <input type="date" id="businessStartDate">
+          </div>
+          <div>
+            <label>Current Reporting Date</label>
+            <input type="date" id="reportingDate">
+          </div>
+          <div>
+            <label>Primary Business Type</label>
+            <select id="businessType">
+              <option value="cafe">Café / Hospitality</option>
+              <option value="retail">Retail Store</option>
+              <option value="ecommerce">E-commerce</option>
+              <option value="consulting">Consulting</option>
+              <option value="trade">Trade / Contractor</option>
+              <option value="service">Service-Based SME</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label>Reporting Currency</label>
+            <select id="currencySelector" onchange="setCurrency(this.value)">
+              <option value="GBP">GBP — £ Pound</option>
+              <option value="USD">USD — $ Dollar</option>
+              <option value="EUR">EUR — € Euro</option>
+              <option value="NGN">NGN — ₦ Naira</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Monthly Financial Data Entry</h2>
+
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:13px 16px;margin-bottom:20px;background:rgba(200,169,110,0.07);border:1px solid rgba(200,169,110,0.25);border-left:3px solid var(--gold);border-radius:8px;">
+          <span style="font-size:16px;flex-shrink:0;margin-top:1px;">&#128203;</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--gold-light);margin-bottom:3px;font-family:'Plus Jakarta Sans',sans-serif;">Minimum 3 months required to activate ImpactGrid AI</div>
+            <div style="font-size:11px;color:var(--text-muted);line-height:1.6;font-family:'JetBrains Mono',monospace;">Enter at least 3 separate months of revenue &amp; expenses to unlock forecasts, risk analysis, performance scoring, and AI insights. Each month can only be entered once.</div>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div>
+            <label>Reporting Month</label>
+            <input type="month" id="month" onchange="checkDuplicate()">
+            <div id="duplicateWarning" style="display:none;font-size:11px;color:var(--danger);font-family:'JetBrains Mono',monospace;margin-top:5px;">&#9888; This month has already been entered. Edit the existing record below.</div>
+          </div>
+          <div>
+            <label>Total Revenue</label>
+            <input type="number" id="revenue" placeholder="0.00" min="0">
+          </div>
+          <div>
+            <label>Total Expenses</label>
+            <input type="number" id="expenses" placeholder="0.00" min="0">
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button type="button" class="btn-primary" onclick="addData()" style="width:100%;">+ Add Record</button>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;margin:22px 0 18px;">
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+          <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);letter-spacing:0.1em;white-space:nowrap;">OR IMPORT FROM FILE</span>
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;padding:12px 16px;background:rgba(200,169,110,0.05);border:1px solid rgba(200,169,110,0.15);border-radius:8px;">
+          <span style="font-size:20px;">📥</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;color:var(--gold-light);margin-bottom:2px;font-family:'Plus Jakarta Sans',sans-serif;">Don't have a spreadsheet yet?</div>
+            <div style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Download our pre-formatted Excel template, fill in your data, and upload it directly.</div>
+          </div>
+          <a href="ImpactGrid_Data_Template.xlsx" download style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:linear-gradient(135deg,rgba(200,169,110,0.2),rgba(226,201,138,0.1));border:1px solid rgba(200,169,110,0.35);border-radius:8px;color:var(--gold-light);font-size:11px;font-family:'JetBrains Mono',monospace;text-decoration:none;white-space:nowrap;letter-spacing:0.05em;transition:all 0.2s;">
+            ↓ Download Template
+          </a>
+        </div>
+
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:14px;">
+          <label for="fileImport" style="display:inline-flex;align-items:center;gap:9px;padding:10px 20px;background:var(--bg-mid);border:1px dashed var(--border-mid);border-radius:8px;cursor:pointer;font-size:12px;color:var(--text-secondary);font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;transition:border-color 0.2s,color 0.2s;">
+            <span style="font-size:16px;">&#128194;</span> Choose File to Import
+          </label>
+          <input type="file" id="fileImport" accept=".csv,.xlsx,.xls,.docx,.doc,.pdf" style="display:none;" onchange="handleFileImport(event)">
+          <span id="importStatus" style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);"></span>
+        </div>
+
+        <div style="margin-top:12px;padding:12px 14px;background:var(--bg-mid);border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;line-height:1.9;">
+          <div style="margin-bottom:6px;display:flex;gap:8px;flex-wrap:wrap;">
+            <span style="padding:2px 8px;background:rgba(45,212,160,0.1);border:1px solid rgba(45,212,160,0.25);border-radius:4px;color:#2DD4A0;">Excel .xlsx</span>
+            <span style="padding:2px 8px;background:rgba(45,212,160,0.1);border:1px solid rgba(45,212,160,0.25);border-radius:4px;color:#2DD4A0;">CSV .csv</span>
+            <span style="padding:2px 8px;background:rgba(100,160,255,0.1);border:1px solid rgba(100,160,255,0.25);border-radius:4px;color:#64A0FF;">Word .docx</span>
+            <span style="padding:2px 8px;background:rgba(255,77,109,0.1);border:1px solid rgba(255,77,109,0.25);border-radius:4px;color:#FF4D6D;">PDF .pdf</span>
+          </div>
+          <strong style="color:var(--text-secondary);">Required columns:</strong>
+          &nbsp;<span style="color:var(--gold-light);">Month</span> | <span style="color:var(--gold-light);">Revenue</span> | <span style="color:var(--gold-light);">Expenses</span>
+          <br><span style="color:var(--text-muted);">Word &amp; PDF: must contain a table or rows with Month, Revenue, Expenses data.</span>
+        </div>
+
+      </section>
+
+      <section class="card">
+        <h2>Monthly Financial Records</h2>
+        <div class="records-table-wrap"><table class="records-table">
+          <thead>
+            <tr>
+              <th>Month</th>
+              <th>Revenue</th>
+              <th>Expenses</th>
+              <th>Profit / Loss</th>
+              <th style="width:80px;text-align:center;">Edit</th>
+            </tr>
+          </thead>
+          <tbody id="recordsTableBody">
+            <tr>
+              <td colspan="5" style="text-align:center;color:var(--text-muted);padding:28px;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                No records yet — add your first month above
+              </td>
+            </tr>
+          </tbody>
+        </table></div>
+        <div class="progress-box" id="dataProgress">
+          0 / 3 months entered &nbsp;&middot;&nbsp; Add 3 months to activate ImpactGrid Insights
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>ImpactGrid AI Financial Insights</h2>
+        <div id="aiInsights">
+          <span style="color:var(--text-muted);font-family:'JetBrains Mono',monospace;font-size:12px;">
+            Awaiting financial data — insights will appear once records are entered.
+          </span>
+        </div>
+      </section>
+
+    </section>
+
+
+    <!-- ============================================
+         SECTION: CHARTS
+    ============================================ -->
+
+    <section id="charts" class="page-section">
+      <section class="card">
+        <h2>Operational Performance Charts</h2>
+        <div style="margin-bottom:6px;font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;">Revenue Trend</div>
+        <div class="chart-card"><canvas id="revenueChart"></canvas></div>
+        <div style="margin-bottom:6px;font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;">Profit / Loss Trend</div>
+        <div class="chart-card"><canvas id="profitChart"></canvas></div>
+        <div style="margin-bottom:6px;font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;">Expense Breakdown</div>
+        <div class="chart-card"><canvas id="expenseChart"></canvas></div>
+      </section>
+    </section>
+
+
+    <!-- ============================================
+         SECTION: PERFORMANCE MATRIX
+    ============================================ -->
+
+    <section id="matrix" class="page-section">
+
+      <style>
+        /* ── KPI Scorecards ── */
+        .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:24px; }
+        .kpi-card {
+          padding:18px 16px 14px;
+          background:var(--bg-surface,#fff);
+          border:1px solid var(--border,#e2e6f0);
+          border-radius:14px;
+          position:relative; overflow:hidden;
+          transition:transform 0.2s, box-shadow 0.2s;
+        }
+        .kpi-card:hover { transform:translateY(-3px); box-shadow:0 10px 30px rgba(15,22,41,0.08); }
+        .kpi-card::before {
+          content:''; position:absolute; top:0; left:0; right:0; height:2px;
+          background:var(--kpi-color,#2dd4a0);
+        }
+        .kpi-label {
+          font-family:'JetBrains Mono',monospace; font-size:9px;
+          letter-spacing:0.12em; text-transform:uppercase;
+          color:var(--text-muted,#8b94b5); margin-bottom:8px;
+        }
+        .kpi-value {
+          font-family:'Syne','Plus Jakarta Sans',sans-serif;
+          font-size:26px; font-weight:800; line-height:1;
+          color:var(--kpi-color,#2dd4a0); margin-bottom:4px;
+        }
+        .kpi-sub { font-size:11px; color:var(--text-muted,#8b94b5); font-family:'DM Sans',sans-serif; }
+        .kpi-trend {
+          position:absolute; top:14px; right:14px;
+          font-size:11px; font-family:'JetBrains Mono',monospace;
+          padding:2px 7px; border-radius:20px;
+        }
+        .kpi-trend.up   { background:rgba(45,212,160,0.1); color:#2dd4a0; }
+        .kpi-trend.down { background:rgba(255,77,109,0.1); color:#ff4d6d; }
+        .kpi-trend.flat { background:rgba(200,169,110,0.1); color:#c8a96e; }
+
+        /* ── Health Gauge ── */
+        .health-gauge-wrap {
+          display:flex; align-items:center; gap:28px;
+          padding:22px 24px;
+          background:var(--bg-surface,#fff);
+          border:1px solid var(--border,#e2e6f0);
+          border-radius:16px; margin-bottom:24px;
+          flex-wrap:wrap;
+        }
+        .gauge-svg-wrap { flex-shrink:0; position:relative; width:160px; height:90px; }
+        .gauge-score-overlay {
+          position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+          text-align:center; pointer-events:none;
+        }
+        .gauge-score-number {
+          font-family:'Syne',sans-serif; font-size:36px; font-weight:800;
+          line-height:1; letter-spacing:-1px;
+        }
+        .gauge-score-label {
+          font-family:'JetBrains Mono',monospace; font-size:9px;
+          letter-spacing:0.1em; text-transform:uppercase;
+          color:var(--text-muted,#8b94b5);
+        }
+        .gauge-detail { flex:1; min-width:200px; }
+        .gauge-detail-title {
+          font-family:'Plus Jakarta Sans',sans-serif; font-size:18px; font-weight:700;
+          color:var(--text-primary,#0f1629); margin-bottom:4px;
+        }
+        .gauge-detail-sub {
+          font-size:12px; color:var(--text-muted,#8b94b5);
+          font-family:'DM Sans',sans-serif; line-height:1.6; margin-bottom:14px;
+        }
+        .gauge-bars { display:flex; flex-direction:column; gap:8px; }
+        .gauge-bar-row { display:flex; align-items:center; gap:10px; }
+        .gauge-bar-label {
+          font-family:'JetBrains Mono',monospace; font-size:9px;
+          letter-spacing:0.08em; color:var(--text-muted,#8b94b5);
+          text-transform:uppercase; width:80px; flex-shrink:0;
+        }
+        .gauge-bar-track {
+          flex:1; height:5px; background:rgba(255,255,255,0.06);
+          border:1px solid rgba(255,255,255,0.05);
+          border-radius:3px; overflow:hidden;
+        }
+        .gauge-bar-fill { height:100%; border-radius:3px; transition:width 1s ease; }
+        .gauge-bar-val {
+          font-family:'JetBrains Mono',monospace; font-size:10px;
+          color:var(--text-secondary,#7a8ba8); width:36px; text-align:right; flex-shrink:0;
+        }
+
+        /* ── Chart row ── */
+        .matrix-charts-row {
+          display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;
+        }
+        @media(max-width:700px){ .matrix-charts-row { grid-template-columns:1fr; } }
+        .matrix-chart-block {
+          background:var(--bg-surface,#fff);
+          border:1px solid var(--border,#e2e6f0);
+          border-radius:14px; padding:18px;
+        }
+        .matrix-chart-label {
+          font-family:'JetBrains Mono',monospace; font-size:9px;
+          letter-spacing:0.12em; text-transform:uppercase;
+          color:var(--text-muted,#8b94b5); margin-bottom:12px;
+        }
+
+        /* ── Comparison table ── */
+        .benchmark-table { width:100%; border-collapse:collapse; }
+        .benchmark-table th {
+          font-family:'JetBrains Mono',monospace; font-size:9px;
+          letter-spacing:0.1em; text-transform:uppercase;
+          color:var(--text-muted,#8b94b5); padding:8px 12px;
+          border-bottom:1px solid var(--border,#e2e6f0); text-align:left;
+        }
+        .benchmark-table td {
+          padding:10px 12px; font-size:12px;
+          border-bottom:1px solid rgba(255,255,255,0.04);
+          font-family:'JetBrains Mono',monospace;
+          color:var(--text-secondary,#7a8ba8);
+        }
+        .benchmark-table tr:last-child td { border-bottom:none; }
+        .bm-pill {
+          display:inline-block; padding:2px 9px; border-radius:20px;
+          font-size:10px; font-weight:600;
+        }
+        .bm-good { background:rgba(45,212,160,0.12); color:#2dd4a0; }
+        .bm-warn { background:rgba(200,169,110,0.12); color:#c8a96e; }
+        .bm-bad  { background:rgba(255,77,109,0.12);  color:#ff4d6d; }
+      </style>
+
+      <!-- KPI Scorecard Row -->
+      <div class="kpi-grid" id="kpiGrid">
+        <div class="kpi-card" style="--kpi-color:#2dd4a0;">
+          <div class="kpi-label">Total Revenue</div>
+          <div class="kpi-value" id="kpiRevenue">—</div>
+          <div class="kpi-sub">All time</div>
+          <div class="kpi-trend flat" id="kpiRevTrend">—</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:#c8a96e;">
+          <div class="kpi-label">Net Profit</div>
+          <div class="kpi-value" id="kpiProfit">—</div>
+          <div class="kpi-sub">All time</div>
+          <div class="kpi-trend flat" id="kpiProfTrend">—</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:#7eb3ff;">
+          <div class="kpi-label">Profit Margin</div>
+          <div class="kpi-value" id="kpiMargin">—</div>
+          <div class="kpi-sub">Average</div>
+          <div class="kpi-trend flat" id="kpiMarginTrend">—</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:#ff9f43;">
+          <div class="kpi-label">Avg Monthly Rev</div>
+          <div class="kpi-value" id="kpiAvgRev">—</div>
+          <div class="kpi-sub">Per month</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:#ff4d6d;">
+          <div class="kpi-label">Expense Ratio</div>
+          <div class="kpi-value" id="kpiExpRatio">—</div>
+          <div class="kpi-sub">Cost per £1 revenue</div>
+          <div class="kpi-trend flat" id="kpiExpTrend">—</div>
+        </div>
+        <div class="kpi-card" style="--kpi-color:#a78bfa;">
+          <div class="kpi-label">Growth Rate</div>
+          <div class="kpi-value" id="kpiGrowth">—</div>
+          <div class="kpi-sub">Month-on-month avg</div>
+          <div class="kpi-trend flat" id="kpiGrowthTrend">—</div>
+        </div>
+      </div>
+
+      <!-- Health Gauge -->
+      <div class="health-gauge-wrap" id="healthGaugeWrap">
+        <div class="gauge-svg-wrap">
+          <svg width="160" height="90" viewBox="0 0 160 90">
+            <!-- Track -->
+            <path d="M 15 85 A 65 65 0 0 1 145 85" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="12" stroke-linecap="round"/>
+            <!-- Fill — animated via JS -->
+            <path id="gaugeFill" d="M 15 85 A 65 65 0 0 1 145 85" fill="none" stroke="#2dd4a0" stroke-width="12" stroke-linecap="round"
+              stroke-dasharray="204" stroke-dashoffset="204" style="transition:stroke-dashoffset 1.4s cubic-bezier(0.34,1.1,0.64,1),stroke 0.5s;"/>
+          </svg>
+          <div class="gauge-score-overlay">
+            <div class="gauge-score-number" id="gaugeNumber" style="color:#2dd4a0;">—</div>
+            <div class="gauge-score-label">Health Score</div>
+          </div>
+        </div>
+        <div class="gauge-detail">
+          <div class="gauge-detail-title" id="gaugeTitle">Awaiting Data</div>
+          <div class="gauge-detail-sub" id="gaugeSub">Add at least 3 months of data to calculate your composite business health score.</div>
+          <div class="gauge-bars" id="gaugeBars"></div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="matrix-charts-row">
+        <div class="matrix-chart-block">
+          <div class="matrix-chart-label">Score Breakdown</div>
+          <div style="height:220px;"><canvas id="performanceBarChart"></canvas></div>
+        </div>
+        <div class="matrix-chart-block">
+          <div class="matrix-chart-label">Revenue vs Expenses Distribution</div>
+          <div style="height:220px;"><canvas id="distributionPieChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Benchmark Table -->
+      <div class="matrix-chart-block" style="margin-bottom:24px;">
+        <div class="matrix-chart-label" style="margin-bottom:14px;">Industry Benchmark Comparison</div>
+        <table class="benchmark-table" id="benchmarkTable">
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Your Value</th>
+              <th>SME Benchmark</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="benchmarkTableBody">
+            <tr><td colspan="4" style="color:var(--text-muted);text-align:center;padding:20px;">Add data to see benchmark comparison</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Health Index (legacy support) -->
+      <div class="matrix-chart-block">
+        <div class="matrix-chart-label" style="margin-bottom:14px;">Composite Business Health Index</div>
+        <div id="businessHealthIndex">
+          <span style="color:var(--text-muted);font-size:13px;">Enter at least 3 months of data to calculate.</span>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ============================================
+         SECTION: RISK ASSESSMENT
+    ============================================ -->
+
+    <section id="risk" class="page-section">
+
+      <style>
+        /* ── Risk Cards ── */
+        .risk-cards-grid {
+          display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+          gap:16px; margin-bottom:24px;
+        }
+        .risk-card {
+          padding:20px; border-radius:14px;
+          border:1px solid var(--border,#e2e6f0);
+          background:var(--bg-surface,#fff);
+          position:relative; overflow:hidden;
+          transition:transform 0.2s;
+        }
+        .risk-card:hover { transform:translateY(-2px); }
+        .risk-card-accent {
+          position:absolute; top:0; left:0; bottom:0; width:3px;
+          border-radius:3px 0 0 3px;
+        }
+        .risk-card-icon {
+          width:38px; height:38px; border-radius:10px;
+          display:flex; align-items:center; justify-content:center;
+          font-size:17px; margin-bottom:12px;
+        }
+        .risk-card-label {
+          font-family:'JetBrains Mono',monospace; font-size:9px;
+          letter-spacing:0.12em; text-transform:uppercase;
+          color:var(--text-muted,#8b94b5); margin-bottom:6px;
+        }
+        .risk-card-value {
+          font-family:'Syne','Plus Jakarta Sans',sans-serif;
+          font-size:20px; font-weight:800; line-height:1.1; margin-bottom:4px;
+        }
+        .risk-card-desc {
+          font-size:11.5px; color:var(--text-muted,#8b94b5);
+          font-family:'DM Sans',sans-serif; line-height:1.5;
+        }
+        .risk-meter-wrap { margin-top:10px; }
+        .risk-meter-track {
+          height:4px; background:rgba(255,255,255,0.06);
+          border-radius:2px; overflow:hidden;
+        }
+        .risk-meter-fill { height:100%; border-radius:2px; transition:width 1s ease; }
+
+        /* ── Dijo Insight Block ── */
+        .dijo-insight-block {
+          border-radius:16px; overflow:hidden;
+          border:1px solid rgba(200,169,110,0.2);
+          background:linear-gradient(135deg,rgba(14,18,32,0.97),rgba(10,13,24,0.99));
+          margin-bottom:0;
+        }
+        .dijo-insight-header {
+          display:flex; align-items:center; gap:14px;
+          padding:16px 20px;
+          border-bottom:1px solid rgba(200,169,110,0.12);
+          background:rgba(200,169,110,0.04);
+        }
+        .dijo-insight-avatar {
+          width:36px; height:36px; border-radius:50%;
+          background:linear-gradient(135deg,rgba(200,169,110,0.15),rgba(200,169,110,0.06));
+          border:1px solid rgba(200,169,110,0.3);
+          display:flex; align-items:center; justify-content:center;
+          font-family:'JetBrains Mono',monospace; font-size:10px;
+          color:#c8a96e; font-weight:700; flex-shrink:0;
+        }
+        .dijo-insight-name {
+          font-family:'JetBrains Mono',monospace; font-size:10px;
+          color:#c8a96e; letter-spacing:0.1em; text-transform:uppercase;
+        }
+        .dijo-insight-status {
+          font-size:10px; color:var(--text-muted,#3d4e68);
+          font-family:'DM Sans',sans-serif;
+        }
+        .dijo-insight-body {
+          padding:20px 22px;
+          font-family:'DM Sans',sans-serif; font-size:13.5px;
+          color:#a0b0cc; line-height:1.75;
+          min-height:80px;
+        }
+        .dijo-insight-body strong { color:#edf0f7; }
+        .dijo-insight-body .dijo-typing-dots {
+          display:inline-flex; gap:4px; align-items:center;
+        }
+        .dijo-insight-body .dijo-dot {
+          width:5px; height:5px; border-radius:50%;
+          background:rgba(200,169,110,0.5);
+          animation:buddy-dot-bounce 1.4s ease-in-out infinite;
+        }
+        .dijo-insight-body .dijo-dot:nth-child(2) { animation-delay:0.2s; }
+        .dijo-insight-body .dijo-dot:nth-child(3) { animation-delay:0.4s; }
+        .dijo-insight-footer {
+          padding:10px 22px 14px;
+          display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+        }
+        .dijo-insight-chip {
+          padding:5px 12px;
+          background:rgba(200,169,110,0.07);
+          border:1px solid rgba(200,169,110,0.18);
+          border-radius:20px; font-size:11px;
+          color:#c8a96e; cursor:pointer;
+          font-family:'DM Sans',sans-serif;
+          transition:all 0.2s;
+        }
+        .dijo-insight-chip:hover {
+          background:rgba(200,169,110,0.14);
+          border-color:rgba(200,169,110,0.35);
+        }
+
+        /* ── Risk Radar ── */
+        .risk-radar-wrap {
+          background:var(--bg-surface,#fff);
+          border:1px solid var(--border,#e2e6f0);
+          border-radius:14px; padding:18px; margin-bottom:24px;
+        }
+      </style>
+
+      <!-- Risk Score Cards -->
+      <div class="risk-cards-grid">
+        <div class="risk-card">
+          <div class="risk-card-accent" id="stabilityAccent" style="background:#c8a96e;"></div>
+          <div class="risk-card-icon" id="stabilityIcon" style="background:rgba(200,169,110,0.1);">📊</div>
+          <div class="risk-card-label">Revenue Stability</div>
+          <div class="risk-card-value" id="stabilityRisk" style="color:#c8a96e;">—</div>
+          <div class="risk-card-desc" id="stabilityDesc">Measures how consistent your monthly revenue is</div>
+          <div class="risk-meter-wrap">
+            <div class="risk-meter-track"><div class="risk-meter-fill" id="stabilityMeter" style="width:0%;background:#c8a96e;"></div></div>
+          </div>
+        </div>
+        <div class="risk-card">
+          <div class="risk-card-accent" id="marginAccent" style="background:#c8a96e;"></div>
+          <div class="risk-card-icon" id="marginIcon" style="background:rgba(200,169,110,0.1);">💰</div>
+          <div class="risk-card-label">Margin Health</div>
+          <div class="risk-card-value" id="marginRisk" style="color:#c8a96e;">—</div>
+          <div class="risk-card-desc" id="marginDesc">How much profit you keep from each pound earned</div>
+          <div class="risk-meter-wrap">
+            <div class="risk-meter-track"><div class="risk-meter-fill" id="marginMeter" style="width:0%;background:#c8a96e;"></div></div>
+          </div>
+        </div>
+        <div class="risk-card">
+          <div class="risk-card-accent" id="liquidityAccent" style="background:#c8a96e;"></div>
+          <div class="risk-card-icon" id="liquidityIcon" style="background:rgba(200,169,110,0.1);">🏦</div>
+          <div class="risk-card-label">Cash Flow Risk</div>
+          <div class="risk-card-value" id="liquidityRisk" style="color:#c8a96e;">—</div>
+          <div class="risk-card-desc" id="liquidityDesc">Your ability to cover expenses from revenue</div>
+          <div class="risk-meter-wrap">
+            <div class="risk-meter-track"><div class="risk-meter-fill" id="liquidityMeter" style="width:0%;background:#c8a96e;"></div></div>
+          </div>
+        </div>
+        <div class="risk-card">
+          <div class="risk-card-accent" id="growthRiskAccent" style="background:#c8a96e;"></div>
+          <div class="risk-card-icon" id="growthRiskIcon" style="background:rgba(200,169,110,0.1);">📈</div>
+          <div class="risk-card-label">Growth Trajectory</div>
+          <div class="risk-card-value" id="growthRisk" style="color:#c8a96e;">—</div>
+          <div class="risk-card-desc" id="growthRiskDesc">Direction and momentum of your revenue trend</div>
+          <div class="risk-meter-wrap">
+            <div class="risk-meter-track"><div class="risk-meter-fill" id="growthRiskMeter" style="width:0%;background:#c8a96e;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Risk Radar Chart -->
+      <div class="risk-radar-wrap" style="margin-bottom:24px;">
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.12em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px;">Risk Radar — Multi-Dimensional View</div>
+        <div style="height:280px;"><canvas id="riskRadarChart"></canvas></div>
+      </div>
+
+      <!-- Dijo Risk Insight -->
+      <div class="dijo-insight-block">
+        <div class="dijo-insight-header">
+          <div class="dijo-insight-avatar">DJ</div>
+          <div>
+            <div class="dijo-insight-name">Dijo — Risk Analysis</div>
+            <div class="dijo-insight-status" id="dijoRiskStatus">Auto-generated from your financial data</div>
+          </div>
+          <div style="margin-left:auto;">
+            <button onclick="refreshDijoRiskInsight()" style="padding:6px 14px;background:rgba(200,169,110,0.08);border:1px solid rgba(200,169,110,0.2);border-radius:8px;color:#c8a96e;font-size:11px;font-family:'JetBrains Mono',monospace;cursor:pointer;letter-spacing:0.04em;transition:all 0.2s;" onmouseover="this.style.background='rgba(200,169,110,0.15)'" onmouseout="this.style.background='rgba(200,169,110,0.08)'">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="dijo-insight-body" id="riskInsight">
+          <span style="color:var(--text-muted);font-size:13px;">Add your financial data and Dijo will generate a personalised risk assessment automatically.</span>
+        </div>
+        <div class="dijo-insight-footer" id="riskInsightChips" style="display:none;">
+          <button class="dijo-insight-chip" onclick="showSection('ai');setTimeout(function(){buddyAsk('Give me a detailed risk breakdown and what I should do')},400)">Get detailed risk advice →</button>
+          <button class="dijo-insight-chip" onclick="showSection('ai');setTimeout(function(){buddyAsk('How do I reduce my revenue volatility?')},400)">Reduce volatility</button>
+          <button class="dijo-insight-chip" onclick="showSection('ai');setTimeout(function(){buddyAsk('What is my break-even point?')},400)">Break-even point</button>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- ============================================
+         SECTION: AI BUDDY
+    ============================================ -->
+
+    <section id="ai" class="page-section">
+
+      <!-- ── AI Buddy Header ── -->
+      <div class="buddy-header">
+        <div class="buddy-avatar-wrap">
+          <div class="buddy-avatar">
+            <div class="buddy-avatar-ring"></div>
+            <div class="buddy-avatar-inner">
+              <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                <circle cx="16" cy="10" r="5" fill="#c8a96e" opacity="0.9"/>
+                <path d="M6 26c0-5.523 4.477-10 10-10s10 4.477 10 10" stroke="#c8a96e" stroke-width="2" stroke-linecap="round" opacity="0.6"/>
+                <circle cx="16" cy="16" r="14" stroke="#c8a96e" stroke-width="0.5" opacity="0.2"/>
+              </svg>
+            </div>
+            <div class="buddy-status-dot"></div>
+          </div>
+        </div>
+        <div class="buddy-header-text">
+          <div class="buddy-name">Dijo by ImpactGrid</div>
+          <div class="buddy-tagline">Your AI financial adviser · Always on</div>
+        </div>
+        <div class="buddy-model-badge" id="buddyModelBadge">
+          <span class="buddy-model-dot"></span>
+          <span id="buddyModelName">Connecting…</span>
+        </div>
+      </div>
+
+      <!-- AI connection status — users never see the source URL -->
+      <div class="buddy-config-bar" id="buddyConfigBar" style="padding:10px 20px;">
+        <div class="buddy-config-inner">
+          <div class="buddy-model-dot"></div>
+          <span id="buddyConnectStatus" class="buddy-connect-status" style="margin:0;">Connecting to Dijo…</span>
+        </div>
+      </div>
+      <!-- Hidden inputs — never shown to users -->
+      <input id="buddyEndpoint" style="display:none;" value="https://impactgrid-dijo.onrender.com">
+      <select id="buddyModel" style="display:none;"><option value="llama">llama-3.3-70b</option></select>
+
+      <!-- ── Chat Window ── -->
+      <div class="buddy-chat-wrap">
+        <div class="buddy-chat-output" id="buddyChatOutput">
+          <!-- Welcome message injected by JS -->
+        </div>
+
+        <!-- Typing indicator -->
+        <div class="buddy-typing" id="buddyTyping" style="display:none;">
+          <div class="buddy-typing-avatar">DJ</div>
+          <div class="buddy-typing-dots">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+
+        <!-- Suggestions -->
+        <div class="buddy-chips" id="buddyChips">
+          <button class="buddy-chip" onclick="buddyAsk('Give me a full financial health assessment')">📊 Health check</button>
+          <button class="buddy-chip" onclick="buddyAsk('What are my top 3 risks right now?')">⚠️ Risk analysis</button>
+          <button class="buddy-chip" onclick="buddyAsk('Project my revenue for the next 3 years')">📈 3yr forecast</button>
+          <button class="buddy-chip" onclick="buddyAsk('How can I reduce expenses and improve margin?')">💰 Cut costs</button>
+          <button class="buddy-chip" onclick="buddyAsk('What is my break-even point?')">⚖️ Break-even</button>
+          <button class="buddy-chip" onclick="buddyAsk('Am I ready to scale or hire?')">🚀 Scale check</button>
+        </div>
+
+        <!-- Input -->
+        <div class="buddy-input-row">
+          <div class="buddy-input-wrap">
+            <input id="buddyChatInput" class="buddy-input" 
+              placeholder="Ask Dijo anything about your business…"
+              onkeydown="if(event.key==='Enter' && !event.shiftKey){ event.preventDefault(); buddySend(); }">
+            <button class="buddy-send-btn" onclick="buddySend()" title="Send">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+          <button class="buddy-clear-btn" onclick="buddyClear()" title="Clear chat">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Forecast section preserved ── -->
+      <section class="card" style="margin-top:24px;">
+        <h2>AI Revenue Forecast</h2>
+        <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+          <button class="ai-suggestion-chip" onclick="generateAIProjection(3)">3 Years</button>
+          <button class="ai-suggestion-chip" onclick="generateAIProjection(5)">5 Years</button>
+          <button class="ai-suggestion-chip" onclick="generateAIProjection(10)">10 Years</button>
+        </div>
+        <div class="chart-card" style="height:360px;"><canvas id="aiForecastChart"></canvas></div>
+        <div id="aiForecastExplanation"></div>
+      </section>
+
+      <!-- Keep legacy IDs so script.js doesn't break -->
+      <div id="aiChatOutput" style="display:none;"></div>
+      <input id="aiChatInput" style="display:none;">
+
+    </section>
+
+
+    <!-- ============================================
+         SECTION: REPORTS
+    ============================================ -->
+
+    <section id="report" class="page-section">
+      <section class="card">
+        <h2>Your Saved Reports</h2>
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:20px;line-height:1.7;font-family:'JetBrains Mono',monospace;">
+          Every report you generate is saved to your account. Download any past report at any time. The ImpactGrid AI also uses these reports as memory to track your progress over time.
+        </p>
+        <div id="savedPDFsList">
+          <div style="font-size:12px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;">Sign in to view your saved reports.</div>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Generate New Report</h2>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:28px;line-height:1.7;max-width:560px;">
+          Generate a branded PDF report of all financial records, AI insights, risk assessment, and performance metrics. A snapshot is automatically saved to your history above.
+        </p>
+        <button class="btn-primary" id="pdfExportBtn" onclick="handlePDFClick()">&#8595; &nbsp;Download PDF Report</button>
+      </section>
+    </section>
+
+
+    <!-- ============================================
+         SECTION: UPGRADE / PRICING
+    ============================================ -->
+    <section id="upgrade" class="page-section">
+
+      <style>
+        /* ── Pricing page styles ── */
+        .pricing-page-wrap { max-width: 1060px; margin: 0 auto; padding: 8px 0 40px; }
+
+        .pricing-eyebrow {
+          display: flex; align-items: center; gap: 10px;
+          margin-bottom: 18px;
+        }
+        .pricing-eyebrow-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          background: var(--gold, #b07d2e);
+          box-shadow: 0 0 10px rgba(176,125,46,0.7);
+          animation: pulse-dot 2s ease-in-out infinite;
+        }
+        .pricing-eyebrow-label {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px; letter-spacing: 0.18em;
+          text-transform: uppercase; color: var(--gold, #b07d2e);
+        }
+        .pricing-headline {
+          font-family: 'Fraunces', serif;
+          font-size: clamp(28px, 4vw, 42px);
+          font-weight: 700; line-height: 1.12;
+          letter-spacing: -0.8px;
+          color: var(--text-primary, #0f1629);
+          margin-bottom: 14px;
+        }
+        .pricing-headline em { font-style: italic; font-weight: 300; color: var(--gold, #b07d2e); }
+        .pricing-subhead {
+          font-size: 14px; color: var(--text-secondary, #4a5578);
+          line-height: 1.7; max-width: 520px; margin-bottom: 48px;
+          font-family: 'DM Sans', sans-serif;
+        }
+
+        /* ── Card grid ── */
+        .plans-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
+          align-items: start;
+        }
+        @media (max-width: 860px) { .plans-grid { grid-template-columns: 1fr; max-width: 440px; } }
+
+        .plan-card {
+          border-radius: 20px;
+          padding: 32px 28px 28px;
+          position: relative;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
+          display: flex; flex-direction: column;
+          background: var(--bg-surface, #fff);
+          border: 1px solid var(--border, #e2e6f0);
+          box-shadow: 0 4px 24px rgba(15,22,41,0.06);
+        }
+        .plan-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 16px 48px rgba(15,22,41,0.10);
+        }
+
+        /* Featured card */
+        .plan-card.featured {
+          background: #0f1629;
+          border-color: rgba(200,169,110,0.35);
+          box-shadow: 0 20px 60px rgba(15,22,41,0.25), 0 0 0 1px rgba(200,169,110,0.15);
+          transform: translateY(-8px) scale(1.02);
+          z-index: 2;
+        }
+        .plan-card.featured:hover {
+          transform: translateY(-12px) scale(1.02);
+          box-shadow: 0 28px 72px rgba(15,22,41,0.3);
+        }
+        .plan-card.featured::before {
+          content: '';
+          position: absolute; top: 0; left: 10%; right: 10%; height: 2px;
+          background: linear-gradient(to right, transparent, #d4a043, transparent);
+          border-radius: 2px;
+        }
+
+        /* Popular badge */
+        .plan-badge-popular {
+          position: absolute; top: -13px; left: 50%; transform: translateX(-50%);
+          background: linear-gradient(135deg, #8a6020, #d4a043);
+          color: #fff; font-family: 'JetBrains Mono', monospace;
+          font-size: 9px; font-weight: 600;
+          letter-spacing: 0.14em; text-transform: uppercase;
+          padding: 5px 16px; border-radius: 20px;
+          box-shadow: 0 4px 14px rgba(176,125,46,0.4);
+          white-space: nowrap;
+        }
+
+        /* Plan name */
+        .plan-name {
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px; letter-spacing: 0.14em;
+          text-transform: uppercase; margin-bottom: 12px;
+          color: var(--text-muted, #8b94b5);
+        }
+        .plan-card.featured .plan-name { color: rgba(200,169,110,0.7); }
+
+        /* Price */
+        .plan-price {
+          font-family: 'Fraunces', serif;
+          font-size: 46px; font-weight: 700;
+          line-height: 1; letter-spacing: -2px;
+          color: var(--text-primary, #0f1629);
+          margin-bottom: 4px;
+        }
+        .plan-card.featured .plan-price { color: #fff; }
+        .plan-price-period {
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px; font-weight: 400;
+          letter-spacing: 0; color: var(--text-muted, #8b94b5);
+        }
+        .plan-card.featured .plan-price-period { color: rgba(255,255,255,0.4); }
+
+        .plan-tagline {
+          font-size: 12.5px; color: var(--text-muted, #8b94b5);
+          margin: 10px 0 24px; font-family: 'DM Sans', sans-serif;
+          line-height: 1.5;
+        }
+        .plan-card.featured .plan-tagline { color: rgba(255,255,255,0.45); }
+
+        /* Divider */
+        .plan-divider {
+          height: 1px; background: var(--border, #e2e6f0);
+          margin: 0 0 22px;
+        }
+        .plan-card.featured .plan-divider { background: rgba(255,255,255,0.08); }
+
+        /* Features list */
+        .plan-features {
+          list-style: none; padding: 0; margin: 0 0 28px; flex: 1;
+          display: flex; flex-direction: column; gap: 11px;
+        }
+        .plan-features li {
+          display: flex; align-items: flex-start; gap: 10px;
+          font-size: 13px; font-family: 'DM Sans', sans-serif;
+          color: var(--text-secondary, #4a5578); line-height: 1.4;
+        }
+        .plan-card.featured .plan-features li { color: rgba(255,255,255,0.7); }
+        .plan-feat-icon {
+          flex-shrink: 0; width: 18px; height: 18px;
+          border-radius: 50%; display: flex; align-items: center; justify-content: center;
+          font-size: 10px; margin-top: 1px;
+        }
+        .feat-yes { background: rgba(5,150,105,0.12); color: #059669; }
+        .feat-no  { background: rgba(139,148,181,0.1); color: var(--text-muted, #8b94b5); }
+        .plan-card.featured .feat-yes { background: rgba(45,212,160,0.15); color: #2dd4a0; }
+        .plan-card.featured .feat-no  { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.25); }
+        .plan-features li.feat-no-item { opacity: 0.55; }
+
+        /* Limit badge */
+        .plan-limit-badge {
+          display: inline-flex; align-items: center; gap: 6px;
+          padding: 5px 11px;
+          background: rgba(176,125,46,0.08);
+          border: 1px solid rgba(176,125,46,0.2);
+          border-radius: 20px; margin-bottom: 20px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10px; color: var(--gold, #b07d2e);
+          letter-spacing: 0.06em;
+        }
+        .plan-card.featured .plan-limit-badge {
+          background: rgba(200,169,110,0.1);
+          border-color: rgba(200,169,110,0.25);
+          color: #d4a043;
+        }
+
+        /* CTA buttons */
+        .plan-cta {
+          display: block; width: 100%; padding: 13px;
+          border-radius: 11px; text-align: center;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px; font-weight: 700;
+          text-decoration: none; cursor: pointer;
+          border: none; transition: all 0.18s ease;
+          letter-spacing: 0.01em;
+        }
+        .plan-cta-free {
+          background: transparent;
+          border: 1.5px solid var(--border, #e2e6f0);
+          color: var(--text-secondary, #4a5578);
+        }
+        .plan-cta-free:hover { border-color: var(--gold, #b07d2e); color: var(--gold, #b07d2e); }
+        .plan-cta-free:disabled { opacity: 0.55; cursor: not-allowed; }
+
+        .plan-cta-upgrade {
+          background: linear-gradient(135deg, #f0f2f8, #e6e9f2);
+          color: #0f1629;
+          border: 1px solid rgba(15,22,41,0.08);
+          box-shadow: 0 2px 8px rgba(15,22,41,0.06);
+        }
+        .plan-cta-upgrade:hover {
+          background: linear-gradient(135deg, #e6e9f2, #dce0ef);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 16px rgba(15,22,41,0.10);
+        }
+
+        .plan-cta-featured {
+          background: linear-gradient(135deg, #8a6020, #d4a043, #b07d2e);
+          color: #fff;
+          box-shadow: 0 6px 24px rgba(176,125,46,0.35);
+        }
+        .plan-cta-featured:hover {
+          filter: brightness(1.08);
+          transform: translateY(-1px);
+          box-shadow: 0 10px 32px rgba(176,125,46,0.45);
+        }
+
+        /* Guarantee strip */
+        .pricing-guarantee {
+          margin-top: 44px; padding: 20px 28px;
+          background: var(--bg-surface, #fff);
+          border: 1px solid var(--border, #e2e6f0);
+          border-radius: 16px;
+          display: flex; align-items: center; gap: 20px;
+          flex-wrap: wrap;
+        }
+        .pricing-guarantee-icon {
+          font-size: 28px; flex-shrink: 0;
+        }
+        .pricing-guarantee-text {
+          flex: 1; min-width: 200px;
+        }
+        .pricing-guarantee-text strong {
+          display: block;
+          font-family: 'DM Sans', sans-serif;
+          font-size: 14px; font-weight: 700;
+          color: var(--text-primary, #0f1629);
+          margin-bottom: 4px;
+        }
+        .pricing-guarantee-text span {
+          font-size: 12.5px; color: var(--text-muted, #8b94b5);
+          font-family: 'DM Sans', sans-serif; line-height: 1.6;
+        }
+        .pricing-trust-items {
+          display: flex; gap: 20px; flex-wrap: wrap;
+        }
+        .pricing-trust-item {
+          display: flex; align-items: center; gap: 7px;
+          font-family: 'JetBrains Mono', monospace;
+          font-size: 10.5px; color: var(--text-muted, #8b94b5);
+          letter-spacing: 0.04em;
+        }
+        .pricing-trust-item::before {
+          content: '✓'; color: #059669; font-weight: 700;
+        }
+      </style>
+
+      <div class="pricing-page-wrap">
+        <!-- Header -->
+        <div class="pricing-eyebrow">
+          <div class="pricing-eyebrow-dot"></div>
+          <span class="pricing-eyebrow-label">Pricing Plans</span>
+        </div>
+        <h1 class="pricing-headline">Simple pricing.<br><em>Serious</em> analytics.</h1>
+        <p class="pricing-subhead">Start free, scale when you are ready. Every plan includes the full ImpactGrid AI Financial Intelligence engine — no hidden fees, no lock-in.</p>
+
+        <!-- Plans grid -->
+        <div class="plans-grid">
+
+          <!-- ── BASIC ── -->
+          <div class="plan-card" id="pricingBasic">
+            <div class="plan-name">Basic</div>
+            <div class="plan-price">Free<span class="plan-price-period"></span></div>
+            <div class="plan-tagline">Try ImpactGrid with no commitment</div>
+            <div class="plan-limit-badge">⊘ 3 sessions/month</div>
+            <div class="plan-divider"></div>
+            <ul class="plan-features">
+              <li><span class="plan-feat-icon feat-yes">✓</span>30 days data storage</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>Manual data entry</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>Basic revenue charts</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>3 AI questions / session</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>1-year forecasting</li>
+              <li class="feat-no-item"><span class="plan-feat-icon feat-no">✗</span>File import</li>
+              <li class="feat-no-item"><span class="plan-feat-icon feat-no">✗</span>PDF report export</li>
+              <li class="feat-no-item"><span class="plan-feat-icon feat-no">✗</span>Risk assessment</li>
+            </ul>
+            <button class="plan-cta plan-cta-free" id="basicPlanBtn" disabled>Current Plan</button>
+          </div>
+
+          <!-- ── PROFESSIONAL (featured) ── -->
+          <div class="plan-card featured" id="pricingProfessional">
+            <div class="plan-badge-popular">Most Popular</div>
+            <div class="plan-name" style="color:rgba(200,169,110,0.7);">Professional</div>
+            <div class="plan-price" style="color:#fff;">£8.99<span class="plan-price-period" style="color:rgba(255,255,255,0.4);">/mo</span></div>
+            <div class="plan-tagline">Everything you need to grow with confidence</div>
+            <div class="plan-limit-badge">∞ Unlimited sessions</div>
+            <div class="plan-divider"></div>
+            <ul class="plan-features">
+              <li><span class="plan-feat-icon feat-yes">✓</span>6 months data storage</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>File import (Excel, CSV, PDF)</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>All charts + performance matrix</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>Unlimited AI questions</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>3-year forecasting</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>Full risk assessment</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>PDF report export</li>
+              <li class="feat-no-item"><span class="plan-feat-icon feat-no">✗</span>Multi-business profiles</li>
+            </ul>
+            <a href="https://buy.stripe.com/aFa5kwaAg6Pedn64zC8N201" target="_blank" class="plan-cta plan-cta-featured">Upgrade to Professional</a>
+          </div>
+
+          <!-- ── ENTERPRISE ── -->
+          <div class="plan-card" id="pricingEnterprise">
+            <div class="plan-name">Enterprise</div>
+            <div class="plan-price">£13.99<span class="plan-price-period">/mo</span></div>
+            <div class="plan-tagline">Full-power analytics for serious SMEs</div>
+            <div class="plan-limit-badge">∞ Everything unlimited</div>
+            <div class="plan-divider"></div>
+            <ul class="plan-features">
+              <li><span class="plan-feat-icon feat-yes">✓</span>Unlimited data storage</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>Everything in Professional</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>10-year forecasting</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>Multi-business profiles</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>Industry benchmarking</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>Priority AI responses</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>Excel export</li>
+              <li><span class="plan-feat-icon feat-yes">✓</span>Advanced risk modelling</li>
+            </ul>
+            <a href="https://buy.stripe.com/8x29AM23Ka1qbeY5DG8N200" target="_blank" class="plan-cta plan-cta-upgrade">Upgrade to Enterprise</a>
+          </div>
+
+        </div>
+
+        <!-- Guarantee strip -->
+        <div class="pricing-guarantee">
+          <div class="pricing-guarantee-icon">🔒</div>
+          <div class="pricing-guarantee-text">
+            <strong>No risk. Cancel anytime.</strong>
+            <span>All paid plans are billed monthly with no long-term contract. Downgrade or cancel with one click — your data is always yours.</span>
+          </div>
+          <div class="pricing-trust-items">
+            <div class="pricing-trust-item">No credit card to start</div>
+            <div class="pricing-trust-item">Cancel anytime</div>
+            <div class="pricing-trust-item">Secure payments via Stripe</div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <footer class="dashboard-footer">
+      © 2026 ImpactGrid Analytics &nbsp;·&nbsp; All rights reserved
+    </footer>
+
+  </main>
+
+</div>
+
+
+<!-- Edit Record Modal -->
+<div id="editModal" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(6,8,15,0.85);backdrop-filter:blur(4px);align-items:center;justify-content:center;">
+  <div style="background:var(--bg-surface,#0e1220);border:1px solid var(--border-mid,#222b42);border-radius:16px;padding:32px 30px;width:100%;max-width:420px;margin:20px;box-shadow:0 24px 60px rgba(0,0,0,0.7);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+      <div>
+        <div style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--gold,#c8a96e);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;">Edit Record</div>
+        <div id="editModalTitle" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.1rem;font-weight:700;color:var(--text-primary);"></div>
+      </div>
+      <button onclick="closeEditModal()" style="background:var(--bg-mid,#121729);border:1px solid var(--border,#1a2035);border-radius:8px;color:var(--text-muted,#3d4e68);font-size:16px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&times;</button>
+    </div>
+    <input type="hidden" id="editIndex">
+    <div style="margin-bottom:16px;">
+      <label style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-muted,#3d4e68);letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:6px;">Total Revenue</label>
+      <input type="number" id="editRevenue" min="0" style="width:100%;padding:11px 14px;background:var(--bg-mid,#121729);border:1px solid var(--border-mid,#222b42);border-radius:8px;color:var(--text-primary);font-size:14px;font-family:'JetBrains Mono',monospace;outline:none;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:24px;">
+      <label style="font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-muted,#3d4e68);letter-spacing:0.1em;text-transform:uppercase;display:block;margin-bottom:6px;">Total Expenses</label>
+      <input type="number" id="editExpenses" min="0" style="width:100%;padding:11px 14px;background:var(--bg-mid,#121729);border:1px solid var(--border-mid,#222b42);border-radius:8px;color:var(--text-primary);font-size:14px;font-family:'JetBrains Mono',monospace;outline:none;box-sizing:border-box;">
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="saveEdit()" style="flex:1;padding:12px;background:linear-gradient(135deg,#b8923e,#e2c98a);color:var(--ink);font-weight:700;font-size:13px;border:none;border-radius:8px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Save Changes</button>
+      <button onclick="deleteRecord()" style="padding:12px 18px;background:rgba(255,77,109,0.1);border:1px solid rgba(255,77,109,0.3);color:#ff4d6d;font-size:12px;border-radius:8px;cursor:pointer;font-family:'JetBrains Mono',monospace;">Delete</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ================================================
+     SCRIPTS — order matters
+================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script src="supabase.js"></script>
+<script src="auth.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script src="plans.js"></script>
+<script src="impactgrid-ai.js"></script>
+<script src="script.js"></script>
+<script src="records-panel.js"></script>
+
+
+<!-- Upgrade Prompt Modal -->
+<div id="upgradeModal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(6,8,15,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+  <div style="background:var(--bg-surface,#0e1220);border:1px solid rgba(200,169,110,0.3);border-radius:18px;padding:36px 32px;width:100%;max-width:400px;margin:20px;box-shadow:0 32px 80px rgba(0,0,0,0.7);text-align:center;">
+    <div style="font-size:36px;margin-bottom:16px;">⬆</div>
+    <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text-primary);margin-bottom:8px;">Upgrade Required</div>
+    <div style="font-size:13px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;margin-bottom:6px;"><span id="upgradeFeatureName"></span> is available on the <strong style="color:var(--gold);"><span id="upgradePlanName"></span></strong> plan.</div>
+    <div style="font-size:22px;font-family:'Plus Jakarta Sans',sans-serif;font-weight:800;color:var(--gold);margin:20px 0 8px;"><span id="upgradePrice"></span></div>
+    <a id="upgradeBtn" href="#" target="_blank" style="display:block;padding:13px;background:linear-gradient(135deg,#b8923e,#e2c98a);color:#06080f;font-weight:700;font-size:14px;border-radius:9px;text-decoration:none;margin-bottom:12px;letter-spacing:0.02em;">Upgrade Now</a>
+    <button onclick="closeUpgradeModal()" style="background:transparent;border:1px solid var(--border,#1a2035);color:var(--text-muted);font-size:13px;padding:10px 20px;border-radius:8px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;width:100%;">Maybe Later</button>
+  </div>
+</div>
+
+<!-- Usage Limit Modal -->
+<div id="limitModal" style="display:none;position:fixed;inset:0;z-index:3000;background:rgba(6,8,15,0.88);backdrop-filter:blur(6px);align-items:center;justify-content:center;">
+  <div style="background:var(--bg-surface,#0e1220);border:1px solid rgba(200,169,110,0.25);border-radius:18px;padding:36px 32px;width:100%;max-width:420px;margin:20px;box-shadow:0 32px 80px rgba(0,0,0,0.7);text-align:center;">
+    <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,77,109,0.1);border:1px solid rgba(255,77,109,0.3);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;">⊘</div>
+    <div id="limitModalTitle" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text-primary);margin-bottom:12px;"></div>
+    <div id="limitModalBody" style="font-size:13px;color:var(--text-secondary,#a0b0cc);font-family:'JetBrains Mono',monospace;line-height:1.7;margin-bottom:24px;"></div>
+    <a id="limitUpgradeBtn" href="#" target="_blank" style="display:block;padding:13px;background:linear-gradient(135deg,#b8923e,#e2c98a);color:#06080f;font-weight:700;font-size:13px;border-radius:9px;text-decoration:none;margin-bottom:10px;letter-spacing:0.02em;">Upgrade Now</a>
+    <button onclick="closeLimitModal()" style="width:100%;background:transparent;border:1px solid rgba(255,255,255,0.08);color:var(--text-muted);font-size:13px;padding:11px;border-radius:9px;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;">Continue on Current Plan</button>
+  </div>
+</div>
+
+<!-- Records Panel — rendered dynamically by records-panel.js -->
+<aside id="recordsPanel" class="records-panel"></aside>
+
+<!-- ================================================
+     GUEST GATE MODAL — inline auth, no page navigation
+================================================ -->
+<style>
+  .gg-field { margin-bottom: 13px; }
+  .gg-field label { display:block; font-size:10px; font-family:'JetBrains Mono',monospace; text-transform:uppercase; letter-spacing:0.09em; color:var(--text-muted,#8b94b5); margin-bottom:6px; }
+  .gg-field input { width:100%; padding:11px 14px; background:var(--bg-mid,#f0f2f8); border:1.5px solid var(--border,#dde1f0); border-radius:9px; color:var(--text-primary,#0f1629); font-size:13.5px; font-family:'DM Sans',sans-serif; outline:none; transition:border-color 0.15s, box-shadow 0.15s; box-sizing:border-box; }
+  .gg-field input:focus { border-color:var(--gold,#b07d2e); box-shadow:0 0 0 3px rgba(176,125,46,0.1); }
+  .gg-field input::placeholder { color:var(--text-muted,#8b94b5); opacity:0.7; }
+  .gg-btn-main { width:100%; padding:13px; background:linear-gradient(135deg,#8a6020,#d4a043,#b07d2e); border:none; border-radius:10px; color:#fff; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer; box-shadow:0 4px 18px rgba(176,125,46,0.25); transition:filter 0.15s, transform 0.15s; letter-spacing:0.01em; }
+  .gg-btn-main:hover { filter:brightness(1.08); transform:translateY(-1px); }
+  .gg-btn-main:disabled { opacity:0.6; cursor:not-allowed; transform:none; filter:none; }
+  .gg-btn-google { width:100%; padding:11px; background:rgba(255,255,255,0.7); border:1.5px solid var(--border,#dde1f0); border-radius:10px; display:flex; align-items:center; justify-content:center; gap:9px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:500; color:var(--text-secondary,#4a5578); cursor:pointer; transition:border-color 0.15s, box-shadow 0.15s; }
+  .gg-btn-google:hover { border-color:var(--gold,#b07d2e); box-shadow:0 2px 10px rgba(176,125,46,0.12); }
+  .gg-divider { display:flex; align-items:center; gap:10px; margin:14px 0; font-size:10px; font-family:'JetBrains Mono',monospace; color:var(--text-muted,#8b94b5); letter-spacing:0.08em; }
+  .gg-divider::before,.gg-divider::after { content:''; flex:1; height:1px; background:var(--border,#dde1f0); }
+  .gg-tab-row { display:flex; background:rgba(220,224,238,0.5); border:1px solid var(--border,#dde1f0); border-radius:10px; padding:3px; margin-bottom:20px; gap:3px; }
+  .gg-tab { flex:1; padding:9px; border:none; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:all 0.18s; background:transparent; color:var(--text-muted,#8b94b5); }
+  .gg-tab.active { background:#fff; color:var(--text-primary,#0f1629); box-shadow:0 1px 6px rgba(15,22,41,0.08); }
+  .gg-msg { margin-top:12px; padding:10px 13px; border-radius:8px; font-size:12px; font-family:'JetBrains Mono',monospace; line-height:1.55; display:none; }
+  .gg-msg.error { background:rgba(220,38,62,0.07); border:1px solid rgba(220,38,62,0.22); color:#c0263e; }
+  .gg-msg.success { background:rgba(5,150,105,0.07); border:1px solid rgba(5,150,105,0.22); color:#0a7a5a; }
+  .gg-spinner { display:inline-block; width:13px; height:13px; border:2px solid rgba(255,255,255,0.3); border-top-color:#fff; border-radius:50%; animation:gg-spin 0.7s linear infinite; vertical-align:middle; margin-right:6px; }
+  @keyframes gg-spin { to { transform:rotate(360deg); } }
+  @keyframes gg-modal-in { from { opacity:0; transform:scale(0.94) translateY(12px); } to { opacity:1; transform:scale(1) translateY(0); } }
+</style>
+
+<div id="guestGateModal" style="display:none;position:fixed;inset:0;z-index:4000;background:rgba(10,13,24,0.65);backdrop-filter:blur(10px);align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--bg-surface,#fff);border:1px solid var(--border-mid,#d0d5ec);border-radius:24px;width:100%;max-width:430px;overflow:hidden;box-shadow:0 32px 80px rgba(15,22,41,0.18);position:relative;animation:gg-modal-in 0.28s cubic-bezier(0.34,1.3,0.64,1);">
+
+    <!-- Gold top accent -->
+    <div style="position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(to right,transparent,var(--gold,#b07d2e),transparent);"></div>
+
+    <!-- ── TEASER PANEL (shown first) ── -->
+    <div id="ggTeaser" style="padding:40px 36px 32px;text-align:center;">
+      <div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,rgba(176,125,46,0.12),rgba(212,160,67,0.06));border:1px solid rgba(176,125,46,0.25);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;font-size:24px;">🔓</div>
+      <div style="font-family:'Plus Jakarta Sans',sans-serif;font-size:21px;font-weight:800;color:var(--text-primary,#0f1629);margin-bottom:8px;letter-spacing:-0.3px;line-height:1.2;">You've seen what ImpactGrid can do</div>
+      <div style="font-size:13px;color:var(--text-secondary,#4a5578);line-height:1.7;margin-bottom:20px;font-family:'DM Sans',sans-serif;">Save your data, unlock AI insights, charts, risk analysis and more — free forever, no card needed.</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:26px;">
+        <span style="padding:3px 10px;background:rgba(5,150,105,0.08);border:1px solid rgba(5,150,105,0.2);border-radius:20px;font-size:11px;color:#059669;font-family:'JetBrains Mono',monospace;">✓ Free forever</span>
+        <span style="padding:3px 10px;background:rgba(176,125,46,0.08);border:1px solid rgba(176,125,46,0.2);border-radius:20px;font-size:11px;color:var(--gold,#b07d2e);font-family:'JetBrains Mono',monospace;">✓ AI analysis</span>
+        <span style="padding:3px 10px;background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.18);border-radius:20px;font-size:11px;color:#2563eb;font-family:'JetBrains Mono',monospace;">✓ Charts & reports</span>
+        <span style="padding:3px 10px;background:rgba(176,125,46,0.08);border:1px solid rgba(176,125,46,0.2);border-radius:20px;font-size:11px;color:var(--gold,#b07d2e);font-family:'JetBrains Mono',monospace;">✓ Data saved</span>
+      </div>
+      <button onclick="ggShowAuth('signup')" style="width:100%;padding:13px;background:linear-gradient(135deg,#8a6020,#d4a043,#b07d2e);border:none;border-radius:10px;color:#fff;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 18px rgba(176,125,46,0.25);margin-bottom:10px;transition:filter 0.15s;" onmouseover="this.style.filter='brightness(1.08)'" onmouseout="this.style.filter='none'">Create Free Account →</button>
+      <button onclick="ggShowAuth('signin')" style="width:100%;padding:11px;background:transparent;border:1.5px solid var(--border-mid,#d0d5ec);border-radius:10px;color:var(--text-secondary,#4a5578);font-family:'DM Sans',sans-serif;font-size:13.5px;font-weight:500;cursor:pointer;margin-bottom:14px;transition:border-color 0.15s;" onmouseover="this.style.borderColor='var(--gold,#b07d2e)'" onmouseout="this.style.borderColor='var(--border-mid,#d0d5ec)'">Sign in to existing account</button>
+      <button onclick="closeGuestGate()" style="background:transparent;border:none;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--text-muted,#8b94b5);cursor:pointer;letter-spacing:0.04em;padding:4px 0;">Maybe later — keep exploring</button>
+    </div>
+
+    <!-- ── INLINE AUTH PANEL (shown after clicking CTA) ── -->
+    <div id="ggAuth" style="display:none;padding:32px 36px 28px;">
+      <!-- Back link -->
+      <button onclick="ggShowTeaser()" style="background:none;border:none;cursor:pointer;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-muted,#8b94b5);letter-spacing:0.05em;padding:0;margin-bottom:20px;display:flex;align-items:center;gap:6px;" onmouseover="this.style.color='var(--gold,#b07d2e)'" onmouseout="this.style.color='var(--text-muted,#8b94b5)'">← Back</button>
+
+      <!-- Tabs -->
+      <div class="gg-tab-row">
+        <button class="gg-tab active" id="ggTabSignup" onclick="ggSetMode('signup')">Create Account</button>
+        <button class="gg-tab" id="ggTabSignin" onclick="ggSetMode('signin')">Sign In</button>
+      </div>
+
+      <!-- Signup-only fields -->
+      <div id="ggSignupExtra">
+        <div class="gg-field">
+          <label>Full Name</label>
+          <input type="text" id="ggName" placeholder="Your name" autocomplete="name">
+        </div>
+      </div>
+
+      <div class="gg-field">
+        <label>Email Address</label>
+        <input type="email" id="ggEmail" placeholder="you@example.com" autocomplete="email">
+      </div>
+
+      <div class="gg-field">
+        <label>Password</label>
+        <input type="password" id="ggPassword" placeholder="Min. 8 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')ggHandleAuth()">
+      </div>
+
+      <div class="gg-field" id="ggConfirmField">
+        <label>Confirm Password</label>
+        <input type="password" id="ggConfirm" placeholder="Re-enter password" autocomplete="new-password" onkeydown="if(event.key==='Enter')ggHandleAuth()">
+      </div>
+
+      <!-- Forgot password (signin only) -->
+      <div id="ggForgotRow" style="display:none;text-align:right;margin-top:-6px;margin-bottom:12px;">
+        <a href="#" onclick="ggHandleForgot();return false;" style="font-size:11.5px;font-family:'JetBrains Mono',monospace;color:var(--text-muted,#8b94b5);text-decoration:none;" onmouseover="this.style.color='var(--gold,#b07d2e)'" onmouseout="this.style.color='var(--text-muted,#8b94b5)'">Forgot password?</a>
+      </div>
+
+      <button class="gg-btn-main" id="ggAuthBtn" onclick="ggHandleAuth()" style="margin-top:4px;margin-bottom:12px;">Create Free Account</button>
+
+      <div class="gg-divider"><span>or</span></div>
+
+      <button class="gg-btn-google" onclick="ggHandleGoogle()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+
+      <div class="gg-msg" id="ggMsg"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   GUEST GATE SYSTEM — inline auth, zero page navigation
+================================================================ */
+var _ggMode = 'signup'; // 'signup' | 'signin'
+
+function showGuestGate() {
+  var m = document.getElementById('guestGateModal');
+  if (m) { m.style.display = 'flex'; ggShowTeaser(); }
+}
+function closeGuestGate() {
+  var m = document.getElementById('guestGateModal');
+  if (m) { m.style.display = 'none'; }
+}
+function ggShowTeaser() {
+  document.getElementById('ggTeaser').style.display = 'block';
+  document.getElementById('ggAuth').style.display   = 'none';
+  ggClearMsg();
+}
+function ggShowAuth(mode) {
+  document.getElementById('ggTeaser').style.display = 'none';
+  document.getElementById('ggAuth').style.display   = 'block';
+  ggSetMode(mode);
+}
+function ggSetMode(mode) {
+  _ggMode = mode;
+  ggClearMsg();
+  var isSignin = (mode === 'signin');
+  document.getElementById('ggTabSignup').classList.toggle('active', !isSignin);
+  document.getElementById('ggTabSignin').classList.toggle('active',  isSignin);
+  document.getElementById('ggSignupExtra').style.display  = isSignin ? 'none' : 'block';
+  document.getElementById('ggConfirmField').style.display = isSignin ? 'none' : 'block';
+  document.getElementById('ggForgotRow').style.display    = isSignin ? 'block' : 'none';
+  document.getElementById('ggAuthBtn').textContent        = isSignin ? 'Sign In' : 'Create Free Account';
+  document.getElementById('ggPassword').placeholder       = isSignin ? 'Enter your password' : 'Min. 8 characters';
+  document.getElementById('ggPassword').autocomplete      = isSignin ? 'current-password' : 'new-password';
+}
+
+function ggShowMsg(text, type) {
+  var el = document.getElementById('ggMsg');
+  el.textContent   = text;
+  el.className     = 'gg-msg ' + (type || '');
+  el.style.display = text ? 'block' : 'none';
+}
+function ggClearMsg() { ggShowMsg('', ''); }
+
+function ggSetLoading(loading) {
+  var btn = document.getElementById('ggAuthBtn');
+  btn.disabled = loading;
+  if (loading) {
+    btn.innerHTML = '<span class="gg-spinner"></span>Please wait…';
+  } else {
+    btn.textContent = _ggMode === 'signin' ? 'Sign In' : 'Create Free Account';
+  }
+}
+
+/* Main auth handler */
+async function ggHandleAuth() {
+  ggClearMsg();
+  var email    = (document.getElementById('ggEmail').value || '').trim();
+  var password = document.getElementById('ggPassword').value || '';
+
+  if (!email)    { ggShowMsg('Please enter your email address.', 'error'); return; }
+  if (!password) { ggShowMsg('Please enter your password.', 'error'); return; }
+
+  if (_ggMode === 'signup') {
+    if (password.length < 8) { ggShowMsg('Password must be at least 8 characters.', 'error'); return; }
+    var confirm = document.getElementById('ggConfirm').value || '';
+    if (password !== confirm) { ggShowMsg('Passwords do not match.', 'error'); return; }
+  }
+
+  ggSetLoading(true);
+  try {
+    var sb = await window.supabaseReady;
+
+    if (_ggMode === 'signin') {
+      var { data, error } = await sb.auth.signInWithPassword({ email: email, password: password });
+      if (error) {
+        var msg = error.message;
+        if (msg.includes('Invalid login'))       msg = 'Incorrect email or password.';
+        if (msg.includes('Email not confirmed')) msg = 'Please confirm your email first, then sign in.';
+        ggShowMsg(msg, 'error');
+        ggSetLoading(false);
+      } else {
+        /* Success — unlock the dashboard without reload */
+        ggOnAuthSuccess(data.user);
+      }
+
+    } else {
+      var name = (document.getElementById('ggName').value || '').trim();
+      var meta = name ? { full_name: name } : {};
+      var { data, error } = await sb.auth.signUp({
+        email: email, password: password,
+        options: { data: meta, emailRedirectTo: window.location.origin + '/index.html' }
+      });
+      if (error) {
+        var msg = error.message;
+        if (msg.includes('already registered') || msg.includes('already exists'))
+          msg = 'Account already exists. Use Sign In instead.';
+        ggShowMsg(msg, 'error');
+        ggSetLoading(false);
+      } else if (data.session) {
+        ggOnAuthSuccess(data.user);
+      } else {
+        /* Email confirmation required */
+        ggSetLoading(false);
+        ggShowMsg('✓ Check your email (' + email + ') for a confirmation link, then sign in here.', 'success');
+        setTimeout(function() { ggSetMode('signin'); }, 3000);
+      }
+    }
+  } catch(e) {
+    ggShowMsg('Something went wrong. Please try again.', 'error');
+    ggSetLoading(false);
+  }
+}
+
+/* Forgot password */
+async function ggHandleForgot() {
+  var email = (document.getElementById('ggEmail').value || '').trim();
+  if (!email) { ggShowMsg('Enter your email above first.', 'error'); return; }
+  try {
+    var sb = await window.supabaseReady;
+    await sb.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/index.html' });
+    ggShowMsg('✓ Reset link sent to ' + email, 'success');
+  } catch(e) { ggShowMsg('Failed to send reset link.', 'error'); }
+}
+
+/* Google OAuth */
+async function ggHandleGoogle() {
+  try {
+    var sb = await window.supabaseReady;
+    await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/index.html' }
+    });
+  } catch(e) { ggShowMsg('Google sign-in failed.', 'error'); }
+}
+
+/* Called when auth succeeds — preserve guest data, unlock dashboard in-place */
+async function ggOnAuthSuccess(user) {
+  window.__igLoggedIn = true;
+  window.__igGuestUsed = false;
+  closeGuestGate();
+
+  /* Remove guest banner */
+  var banner = document.getElementById('ggGuestBanner');
+  if (banner) banner.remove();
+
+  /* Update sidebar user info */
+  if (user && user.email) {
+    var emailEl = document.getElementById('sidebarUserEmail');
+    var avatarEl = document.getElementById('sidebarAvatar');
+    if (emailEl) emailEl.textContent = user.email;
+    if (avatarEl) avatarEl.textContent = user.email.charAt(0).toUpperCase();
+  }
+
+  /* ── Snapshot guest-entered data BEFORE plan system overwrites it ── */
+  var guestSnapshot = {
+    businessData: window.businessData ? JSON.parse(JSON.stringify(window.businessData)) : [],
+    startDate:    (document.getElementById('businessStartDate')  || {}).value || '',
+    reportDate:   (document.getElementById('reportingDate')      || {}).value || '',
+    bizType:      (document.getElementById('businessType')       || {}).value || '',
+    currency:     (document.getElementById('currencySelector')   || {}).value || 'GBP'
+  };
+
+  /* ── Show a "Saving your data…" toast while we persist ── */
+  var toast = document.createElement('div');
+  toast.id = 'ggToast';
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1a3a6a,#2563eb);color:#fff;padding:12px 24px;border-radius:40px;font-family:"DM Sans",sans-serif;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 8px 28px rgba(37,99,235,0.35);white-space:nowrap;transition:opacity 0.4s;';
+  toast.textContent = '⏳ Saving your data…';
+  document.body.appendChild(toast);
+
+  /* ── Init plan system (loads user plan, may call loadUserData) ── */
+  if (typeof initPlanSystem === 'function') await initPlanSystem();
+
+  /* ── Merge guest data back in if account had no existing data ── */
+  var hasExistingData = window.businessData && window.businessData.length > 0;
+
+  if (!hasExistingData && guestSnapshot.businessData.length > 0) {
+    window.businessData = guestSnapshot.businessData;
+  }
+
+  /* Restore profile fields if they were filled in as guest */
+  if (guestSnapshot.startDate) {
+    var sd = document.getElementById('businessStartDate');
+    if (sd && !sd.value) sd.value = guestSnapshot.startDate;
+  }
+  if (guestSnapshot.reportDate) {
+    var rd = document.getElementById('reportingDate');
+    if (rd && !rd.value) rd.value = guestSnapshot.reportDate;
+  }
+  if (guestSnapshot.bizType) {
+    var bt = document.getElementById('businessType');
+    if (bt && !bt.value) bt.value = guestSnapshot.bizType;
+  }
+  if (guestSnapshot.currency) {
+    var cs = document.getElementById('currencySelector');
+    if (cs) { cs.value = guestSnapshot.currency; if (typeof setCurrency === 'function') setCurrency(guestSnapshot.currency); }
+  }
+
+  /* ── Persist merged data to Supabase ── */
+  try {
+    if (typeof saveUserData === 'function') {
+      await saveUserData();
+    }
+  } catch(e) { console.warn('[ImpactGrid] Guest data save failed:', e); }
+
+  /* ── Refresh all UI with the restored data ── */
+  if (typeof updateAll === 'function') updateAll();
+  if (typeof renderRecordsPanel === 'function') renderRecordsPanel();
+
+  /* ── Swap toast to success ── */
+  toast.style.background = 'linear-gradient(135deg,#0a7a5a,#059669)';
+  toast.style.boxShadow  = '0 8px 28px rgba(5,150,105,0.35)';
+  toast.textContent = guestSnapshot.businessData.length > 0
+    ? '✓ Signed in — your data has been saved!'
+    : '✓ Signed in — welcome to ImpactGrid!';
+  setTimeout(function() { toast.style.opacity = '0'; setTimeout(function() { toast.remove(); }, 400); }, 3200);
+
+  /* ── Unlock all nav sections ── */
+  window.showSection = _origShowSection || window.showSection;
+  window.mobileNav   = _origMobileNav   || window.mobileNav;
+}
+
+/* Gate check */
+function guestGateCheck(context) {
+  if (window.__igLoggedIn) return true;
+
+  /* Allow up to 3 data entries as guest */
+  if (context === 'addData') {
+    var guestCount = window.__igGuestCount || 0;
+    if (guestCount < 3) {
+      window.__igGuestCount = guestCount + 1;
+      window.__igGuestUsed  = true;
+      /* Show soft nudge after 2nd entry */
+      if (guestCount === 1) _showGuestSoftNudge();
+      return true;
+    }
+    showGuestGate(); return false;
+  }
+
+  /* Allow viewing charts/matrix/risk as guest if they have data */
+  var viewOnly = ['charts','matrix','risk'];
+  if (viewOnly.indexOf(context) !== -1) {
+    var hasData = window.businessData && window.businessData.length >= 1;
+    if (hasData) return true;
+    showGuestGate(); return false;
+  }
+
+  /* Gate AI, reports, export */
+  showGuestGate(); return false;
+}
+
+function _showGuestSoftNudge() {
+  /* Non-blocking banner after 2nd entry */
+  if (document.getElementById('guestSoftNudge')) return;
+  var nudge = document.createElement('div');
+  nudge.id = 'guestSoftNudge';
+  nudge.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:3500;max-width:320px;padding:16px 18px;background:linear-gradient(135deg,#0f1629,#1a2540);border:1px solid rgba(200,169,110,0.3);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.4);font-family:"DM Sans",sans-serif;animation:gg-modal-in 0.3s ease;';
+  nudge.innerHTML = '<div style="font-size:13px;font-weight:700;color:#edf0f7;margin-bottom:6px;">💾 Don\'t lose your data</div>'
+    + '<div style="font-size:12px;color:rgba(255,255,255,0.5);line-height:1.6;margin-bottom:14px;">Create a free account to save your records and unlock charts, AI analysis, and risk scoring.</div>'
+    + '<div style="display:flex;gap:8px;">'
+    + '<button onclick="showGuestGate()" style="flex:1;padding:9px;background:linear-gradient(135deg,#8a6020,#d4a043);border:none;border-radius:8px;color:#fff;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Save my data →</button>'
+    + '<button onclick="this.parentElement.parentElement.remove()" style="padding:9px 12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:8px;color:rgba(255,255,255,0.4);font-size:12px;cursor:pointer;font-family:inherit;">Later</button>'
+    + '</div>';
+  document.body.appendChild(nudge);
+  setTimeout(function(){ if(nudge.parentElement) nudge.remove(); }, 12000);
+}
+
+/* ================================================================
+   DATA INTERCEPTS — guest gate + session tracking + AUTO-SAVE
+   
+   Strategy: do not rely on wrapping script.js functions (race condition).
+   Instead use a 2-second polling loop that watches businessData for
+   any change in length OR content hash, then saves immediately.
+   Also wraps functions if available as a fast-path.
+   Guaranteed to catch every addData, deleteRecord, saveEdit, import.
+================================================================ */
+var _igSaveTimer    = null;
+var _igLastDataHash = '';
+var _igSavePending  = false;
+
+function _igDataHash() {
+  var d = window.businessData || [];
+  return d.length + '|' + d.reduce(function(s,r) {
+    return s + (r.revenue||0) + (r.expenses||0) + (r.date ? new Date(r.date).getTime() : 0);
+  }, 0);
+}
+
+function _igScheduleSave(label, delay) {
+  if (!window.__igLoggedIn || !window.currentUser) return;
+  clearTimeout(_igSaveTimer);
+  _igSaveTimer = setTimeout(function() {
+    if (typeof saveUserData === 'function') {
+      saveUserData();
+      _igLastDataHash = _igDataHash();
+      console.log('[ImpactGrid] Saved after:', label);
+    }
+  }, delay || 1200);
+}
+
+/* addData wrapper — guest gate + session + save */
+function _wrapAddData(orig) {
+  return async function() {
+    if (!window.__igLoggedIn) {
+      if (!guestGateCheck('addData')) return;
+    } else {
+      if (typeof igSessionStart === 'function') {
+        var ok = await igSessionStart();
+        if (!ok) return;
+      }
+    }
+    orig.apply(this, arguments);
+    /* Stamp the newly added record with savedAt = now */
+    var bd = window.businessData || [];
+    if (bd.length > 0 && !bd[bd.length-1].savedAt) {
+      bd[bd.length-1].savedAt = new Date().toISOString();
+    }
+    _igScheduleSave('addData', 800);
+  };
+}
+
+function _wrapDelete(orig) {
+  return function() { orig.apply(this, arguments); _igScheduleSave('deleteRecord', 800); };
+}
+function _wrapEdit(orig) {
+  return function() { orig.apply(this, arguments); _igScheduleSave('saveEdit', 800); };
+}
+function _wrapImport(orig) {
+  return function() {
+    var r = orig.apply(this, arguments);
+    _igScheduleSave('fileImport', 3000);
+    return r;
+  };
+}
+
+function _igApplyWraps() {
+  if (window.addData && !window.addData.__igW) {
+    window.addData = _wrapAddData(window.addData); window.addData.__igW = 1;
+  }
+  if (window.deleteRecord && !window.deleteRecord.__igW) {
+    window.deleteRecord = _wrapDelete(window.deleteRecord); window.deleteRecord.__igW = 1;
+  }
+  if (window.saveEdit && !window.saveEdit.__igW) {
+    window.saveEdit = _wrapEdit(window.saveEdit); window.saveEdit.__igW = 1;
+  }
+  if (window.handleFileImport && !window.handleFileImport.__igW) {
+    window.handleFileImport = _wrapImport(window.handleFileImport); window.handleFileImport.__igW = 1;
+  }
+}
+
+/* Try immediately, then again after scripts load */
+_igApplyWraps();
+/* Listen for data loaded from Supabase and force full UI refresh */
+document.addEventListener('igDataLoaded', function(e) {
+  console.log('[ImpactGrid] igDataLoaded event — re-rendering with', e.detail.records, 'records');
+  if (typeof updateAll          === 'function') updateAll();
+  if (typeof renderRecordsPanel === 'function') renderRecordsPanel();
+  if (typeof updateHealthScore  === 'function') updateHealthScore();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  _igApplyWraps();
+  setTimeout(_igApplyWraps, 500);
+  setTimeout(_igApplyWraps, 1500);
+
+  /* ── POLLING SAFETY NET ──
+     Checks businessData every 2 seconds. If content changed since
+     last save, triggers a save. This is the guaranteed fallback that
+     catches any mutation our wrappers miss. */
+  _igLastDataHash = _igDataHash();
+  setInterval(function() {
+    if (!window.__igLoggedIn || !window.currentUser) return;
+    var h = _igDataHash();
+    if (h !== _igLastDataHash) {
+      _igLastDataHash = h;
+      if (typeof saveUserData === 'function') {
+        saveUserData();
+        console.log('[ImpactGrid] Poll-save triggered');
+      }
+    }
+  }, 2000);
+});
+
+/* Save on tab switch and page close */
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState === 'hidden' && window.__igLoggedIn && window.currentUser) {
+    if (typeof saveUserData === 'function') { saveUserData(); _igLastDataHash = _igDataHash(); }
+  }
+});
+/* beforeunload save REMOVED — it fires after signOut clears businessData,
+   causing [] to be written to DB. Logout in auth.js saves explicitly before signOut. */
+
+/* Intercept section nav — guest gate + session close when results viewed */
+var _origShowSection = window.showSection;
+function _gatedShowSection(id, el) {
+  var gated = ['charts','matrix','risk','ai','report','upgrade'];
+  /* Guest: allow charts/matrix/risk if they have data, gate AI/report/upgrade */
+  if (!window.__igLoggedIn && gated.indexOf(id) !== -1) {
+    var viewable = ['charts','matrix','risk'];
+    if (viewable.indexOf(id) !== -1 && window.businessData && window.businessData.length >= 1) { /* allow */ }
+    else { guestGateCheck(id); return; }
+  }
+  /* Logged-in Basic: close/consume session when they view results */
+  var resultsSections = ['charts','ai','report','risk','matrix'];
+  if (window.__igLoggedIn && resultsSections.indexOf(id) !== -1) {
+    if (typeof igSessionClose === 'function') igSessionClose();
+  }
+  if (_origShowSection) _origShowSection(id, el);
+}
+window.showSection = _gatedShowSection;
+
+var _origMobileNav = window.mobileNav;
+window.mobileNav = function(id, el) {
+  var gated = ['charts','matrix','risk','ai','report','upgrade'];
+  if (!window.__igLoggedIn && gated.indexOf(id) !== -1) {
+    var viewable = ['charts','matrix','risk'];
+    if (viewable.indexOf(id) !== -1 && window.businessData && window.businessData.length >= 1) { /* allow */ }
+    else { guestGateCheck(id); return; }
+  }
+  var resultsSections = ['charts','ai','report','risk','matrix'];
+  if (window.__igLoggedIn && resultsSections.indexOf(id) !== -1) {
+    if (typeof igSessionClose === 'function') igSessionClose();
+  }
+  if (_origMobileNav) _origMobileNav(id, el);
+};
+
+/* Guest banner */
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.__igLoggedIn) return;
+  var header = document.querySelector('.dashboard-header');
+  if (!header) return;
+  var banner = document.createElement('div');
+  banner.id = 'ggGuestBanner';
+  banner.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;padding:10px 16px;background:linear-gradient(135deg,rgba(176,125,46,0.08),rgba(212,160,67,0.04));border:1px solid rgba(176,125,46,0.2);border-radius:10px;font-size:12px;font-family:"DM Sans",sans-serif;color:var(--text-secondary,#4a5578);';
+  banner.innerHTML = '<span>👋 <strong style="color:var(--text-primary,#0f1629);">You\'re in guest mode.</strong> You\'re trying ImpactGrid free. Add up to 3 months of data and see your charts — no account needed yet.</span>'
+    + '<button onclick="showGuestGate()" style="flex-shrink:0;padding:6px 14px;background:linear-gradient(135deg,#8a6020,#d4a043);border:none;border-radius:7px;color:#fff;font-size:11.5px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:\'DM Sans\',sans-serif;">Sign up free →</button>';
+  header.appendChild(banner);
+});
+
+
+/* ================================================================
+   IMPACTGRID AI BUDDY — Core JS
+   Calls Dijo server at https://impactgrid-dijo.onrender.com
+   Injects full user financial context into every prompt.
+================================================================ */
+
+var _buddyEndpoint  = '';
+var _buddyHistory   = [];
+var _buddyTyping    = false;
+var _buddyConnected = false;
+
+/* ── Auto-connect silently on load ── */
+var _BUDDY_URL = 'https://impactgrid-dijo.onrender.com';
+
+function _buddyAutoConnect() {
+  _buddyEndpoint = _BUDDY_URL;
+  fetch(_buddyEndpoint + '/health', {
+    method: 'GET',
+    headers: { 'ngrok-skip-browser-warning': '1', 'User-Agent': 'ImpactGridAI' }
+  })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      _buddyConnected = true;
+      var badge = document.getElementById('buddyModelBadge');
+      var bname = document.getElementById('buddyModelName');
+      if (badge) badge.className = 'buddy-model-badge';
+      if (bname) bname.textContent = 'Dijo · online';
+      _buddySetStatus('Dijo is ready', 'ok');
+      var bar = document.getElementById('buddyConfigBar');
+      if (bar) bar.style.display = 'none';
+    })
+    .catch(function(e) {
+      console.warn('[Buddy] server not reachable — local mode active:', e.message);
+      _buddyConnected = false;
+      var badge = document.getElementById('buddyModelBadge');
+      var bname = document.getElementById('buddyModelName');
+      /* Show local mode — not "offline" — Dijo still works via local engine */
+      if (badge) badge.className = 'buddy-model-badge';
+      if (badge) badge.style.color = '#c8a96e';
+      if (bname) bname.textContent = 'Dijo · local';
+      _buddySetStatus('Dijo is ready', 'ok');
+      var bar = document.getElementById('buddyConfigBar');
+      if (bar) bar.style.display = 'none';
+      /* Keep retrying server in background silently */
+      setTimeout(_buddyAutoConnect, 15000);
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  _buddyRenderWelcome();
+
+  /* Immediately show as ready — local AI works right away */
+  var badge = document.getElementById('buddyModelBadge');
+  var bname = document.getElementById('buddyModelName');
+  if (badge) badge.className = 'buddy-model-badge';
+  if (badge) badge.style.color = '#c8a96e';
+  if (bname) bname.textContent = 'Dijo · ready';
+  var bar = document.getElementById('buddyConfigBar');
+  if (bar) bar.style.display = 'none';
+
+  /* Try Render in background — silently upgrade if it responds */
+  setTimeout(_buddyAutoConnect, 1500);
+});
+
+/* ── Welcome message ── */
+function _buddyRenderWelcome() {
+  var name = _buddyUserName();
+  var greeting = name
+    ? 'Hello <strong style="color:#c8a96e;">' + name + '</strong> &#128075;'
+    : 'Hello, welcome to ImpactGrid &#128075;';
+
+  var dataCount = (window.businessData || []).length;
+  var dataLine  = dataCount >= 3
+    ? 'I can see <strong style="color:#c8a96e;">' + dataCount + ' months</strong> of your financial data — I am ready to advise you.'
+    : dataCount > 0
+    ? 'I can see <strong style="color:#c8a96e;">' + dataCount + ' month' + (dataCount>1?'s':'') + '</strong> so far. Add at least 3 months to unlock full analysis.'
+    : 'No financial data yet. Add your monthly records on the dashboard and I will give you deep insights.';
+
+  _buddyAppendMsg('ai',
+    greeting + '<br><br>' +
+    'I am <strong>Dijo</strong> — your ImpactGrid financial adviser. I will help you understand your numbers, spot risks, and figure out what to do next.<br><br>' +
+    dataLine + '<br><br>' +
+    'What would you like to know?'
+  );
+}
+
+function _buddyUserName() {
+  var user = window.currentUser;
+  if (!user) return '';
+  if (user.user_metadata && user.user_metadata.full_name)
+    return user.user_metadata.full_name.split(' ')[0];
+  if (user.email) return user.email.split('@')[0];
+  return '';
+}
+
+/* ── Test connection to Express server ── */
+async function buddyConnect() {
+  var ep = ((document.getElementById('buddyEndpoint') || {}).value || _buddyEndpoint || '').replace(/\/+$/, '');
+  if (!ep) { _buddySetStatus('No server URL configured — running in local mode', 'err'); return; }
+
+  _buddySetStatus('Connecting…', '');
+
+  try {
+    /* Ping the health endpoint */
+    var res = await fetch(ep + '/health');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var data = await res.json();
+    if (data.status !== 'ok') throw new Error('Server not ready');
+
+    _buddyConnected = true;
+    _buddyEndpoint  = ep;
+    try { localStorage.setItem('ig_buddy_endpoint', ep); } catch(e){}
+
+    _buddySetStatus('&#10003; Dijo is connected and ready', 'ok');
+    var badge = document.getElementById('buddyModelBadge');
+    var bname = document.getElementById('buddyModelName');
+    if (badge) badge.className = 'buddy-model-badge';
+    if (bname) bname.textContent = 'Dijo · online';
+
+  } catch(e) {
+    _buddyConnected = false;
+    _buddySetStatus('Running in local mode — answers from built-in AI', 'ok');
+    var badge = document.getElementById('buddyModelBadge');
+    var bname = document.getElementById('buddyModelName');
+    if (badge) badge.className = 'buddy-model-badge';
+    if (badge) badge.style.color = '#c8a96e';
+    if (bname) bname.textContent = 'Dijo · local';
+  }
+}
+
+/* ── Build the full prompt with user context ── */
+function _buddyBuildPrompt(userMessage) {
+  var data     = window.businessData || [];
+  var currency = window.currentCurrency || 'GBP';
+  var sym      = {GBP:'£',USD:'$',EUR:'€',NGN:'₦'}[currency] || currency+' ';
+  var bizType  = (document.getElementById('businessType')      || {}).value || 'business';
+  var startDate= (document.getElementById('businessStartDate') || {}).value || '';
+  var name     = _buddyUserName();
+
+  /* System context */
+  var ctx = 'You are Dijo by ImpactGrid — a highly skilled, direct, and warm financial adviser. ';
+  ctx += 'You give specific, actionable advice based on real numbers. Never be vague or generic. ';
+  ctx += 'Format your answers clearly. Use bullet points when listing items. ';
+  if (name) ctx += 'The user name is ' + name + '. Address them by name. ';
+  ctx += '\n\n';
+
+  ctx += 'USER PROFILE:\n';
+  if (bizType)   ctx += 'Business type: ' + bizType + '\n';
+  if (startDate) ctx += 'Trading since: ' + startDate + '\n';
+  ctx += 'Currency: ' + currency + '\n\n';
+
+  if (data.length === 0) {
+    ctx += 'FINANCIAL DATA: No data entered yet.\n\n';
+  } else {
+    ctx += 'MONTHLY FINANCIAL DATA (' + data.length + ' months):\n';
+    var totalRev = 0, totalExp = 0, totalPro = 0;
+    data.forEach(function(d) {
+      var mo  = new Date(d.date).toISOString().slice(0,7);
+      var rev = Number(d.revenue)  || 0;
+      var exp = Number(d.expenses) || 0;
+      var pro = rev - exp;
+      var mar = rev > 0 ? ((pro/rev)*100).toFixed(1) : '0.0';
+      ctx += mo + ': Revenue=' + sym + rev.toLocaleString() + ', Expenses=' + sym + exp.toLocaleString() + ', Profit=' + sym + pro.toLocaleString() + ', Margin=' + mar + '%\n';
+      totalRev += rev; totalExp += exp; totalPro += pro;
+    });
+    var avgMargin = totalRev > 0 ? ((totalPro/totalRev)*100).toFixed(1) : '0.0';
+    ctx += '\nSUMMARY: Total Revenue=' + sym + totalRev.toLocaleString();
+    ctx += ', Total Profit=' + sym + totalPro.toLocaleString();
+    ctx += ', Avg Margin=' + avgMargin + '%\n';
+
+    /* Growth */
+    if (data.length >= 2) {
+      var first = Number(data[0].revenue), last = Number(data[data.length-1].revenue);
+      var growth = first > 0 ? (((last-first)/first)*100).toFixed(1) : '0';
+      ctx += 'Revenue trend: ' + (growth >= 0 ? '+' : '') + growth + '% over the period\n';
+    }
+  }
+
+  /* Conversation history (last 6 turns) */
+  if (_buddyHistory.length > 0) {
+    ctx += '\nCONVERSATION HISTORY:\n';
+    _buddyHistory.slice(-6).forEach(function(m) {
+      ctx += (m.role === 'user' ? 'User: ' : 'You: ') + m.content + '\n';
+    });
+  }
+
+  ctx += '\nNow answer this question: ' + userMessage;
+  return ctx;
+}
+
+/* ── Send message ── */
+async function buddySend() {
+  var input   = document.getElementById('buddyChatInput');
+  var message = (input ? input.value : '').trim();
+  if (!message || _buddyTyping) return;
+  if (input) input.value = '';
+  await buddyAsk(message);
+}
+
+async function buddyAsk(message) {
+  if (!message || _buddyTyping) return;
+
+  /* Hide suggestion chips */
+  var chips = document.getElementById('buddyChips');
+  if (chips) chips.style.display = 'none';
+
+  /* Show user message */
+  _buddyAppendMsg('user', _escHtml(message));
+  _buddyHistory.push({ role: 'user', content: message });
+
+  /* ── If Dijo server is offline, fall through to local AI engine ── */
+  if (!_buddyConnected || !_buddyEndpoint) {
+    _buddyFallbackLocal(message);
+    return;
+  }
+
+  /* Show typing */
+  _buddyTyping = true;
+  var typingEl = document.getElementById('buddyTyping');
+  if (typingEl) typingEl.style.display = 'flex';
+  var sendBtn = document.querySelector('.buddy-send-btn');
+  if (sendBtn) sendBtn.disabled = true;
+  _buddyScrollBottom();
+
+  try {
+    var fullPrompt = _buddyBuildPrompt(message);
+
+    var res = await fetch(_buddyEndpoint + '/chat', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': '1', 'User-Agent': 'ImpactGridAI' },
+      body:    JSON.stringify({ message: fullPrompt, mode: 'adviser' })
+    });
+
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    var data  = await res.json();
+    var reply = data.reply || 'No response received.';
+
+    _buddyHistory.push({ role: 'assistant', content: reply });
+    _buddyAppendMsg('ai', _buddyFormat(reply));
+
+  } catch(e) {
+    /* Server dropped mid-session — fall back silently to local engine */
+    console.warn('[Buddy] server error, falling back to local AI:', e.message);
+    _buddyConnected = false;
+    var badge = document.getElementById('buddyModelBadge');
+    var bname = document.getElementById('buddyModelName');
+    if (badge) badge.className = 'buddy-model-badge';
+    if (bname) bname.textContent = 'AI - local';
+    _buddyFallbackLocal(message);
+
+  } finally {
+    _buddyTyping = false;
+    var typingEl = document.getElementById('buddyTyping');
+    if (typingEl) typingEl.style.display = 'none';
+    var sendBtn = document.querySelector('.buddy-send-btn');
+    if (sendBtn) sendBtn.disabled = false;
+    _buddyScrollBottom();
+  }
+}
+
+/* ── Local AI fallback — uses ImpactGridAI engine, same Dijo persona ── */
+function _buddyFallbackLocal(message) {
+  _buddyTyping = true;
+  var typingEl = document.getElementById('buddyTyping');
+  if (typingEl) typingEl.style.display = 'flex';
+  var sendBtn = document.querySelector('.buddy-send-btn');
+  if (sendBtn) sendBtn.disabled = true;
+  _buddyScrollBottom();
+
+  /* Small delay for natural feel */
+  setTimeout(function() {
+    try {
+      var data     = window.businessData || [];
+      var currency = window.currentCurrency || 'GBP';
+      var reply;
+
+      if (data.length === 0) {
+        reply = ImpactGridAI.card('Dijo',
+          '<p>No financial data yet. Add your monthly records on the dashboard and I will give you a full analysis immediately.</p>',
+          ['How does ImpactGrid work?', 'What data do I need?']
+        );
+      } else {
+        reply = ImpactGridAI.analyze
+          ? null /* will use async path below */
+          : ImpactGridAI.adviser(message, data, currency, _buddyHistory);
+
+        if (!reply) {
+          /* ImpactGridAI.analyze is async — call adviser directly */
+          reply = ImpactGridAI.adviser(message, data, currency, _buddyHistory);
+        }
+      }
+
+      _buddyHistory.push({ role: 'assistant', content: message });
+      _buddyAppendMsg('ai', reply || "I could not generate a response. Please try again.");
+
+    } catch(e) {
+      console.error('[Buddy fallback]', e);
+      _buddyAppendMsg('ai', 'I ran into an issue analysing your data. Please try rephrasing your question.');
+    } finally {
+      _buddyTyping = false;
+      var typingEl = document.getElementById('buddyTyping');
+      if (typingEl) typingEl.style.display = 'none';
+      var sendBtn = document.querySelector('.buddy-send-btn');
+      if (sendBtn) sendBtn.disabled = false;
+      _buddyScrollBottom();
+    }
+  }, 480);
+}
+
+/* ── UI helpers ── */
+function _buddyAppendMsg(role, html) {
+  var output = document.getElementById('buddyChatOutput');
+  if (!output) return;
+  var isAI   = role === 'ai';
+  var label  = isAI ? 'Dijo by ImpactGrid' : 'You';
+  var init   = isAI ? 'AI' : (_buddyUserName()[0] || 'U').toUpperCase();
+  var div    = document.createElement('div');
+  div.className = 'buddy-msg ' + role;
+  div.innerHTML =
+    '<div class="buddy-msg-avatar">' + init + '</div>' +
+    '<div class="buddy-msg-bubble">' +
+      '<span class="buddy-msg-name">' + label + '</span>' +
+      html +
+    '</div>';
+  output.appendChild(div);
+  _buddyScrollBottom();
+}
+
+function _buddyScrollBottom() {
+  var o = document.getElementById('buddyChatOutput');
+  if (o) setTimeout(function(){ o.scrollTop = o.scrollHeight; }, 50);
+}
+
+function _buddySetStatus(msg, type) {
+  var el = document.getElementById('buddyConnectStatus');
+  if (!el) return;
+  el.innerHTML  = msg;
+  el.className  = 'buddy-connect-status ' + (type||'');
+}
+
+function _escHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _buddyFormat(text) {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^### (.+)$/gm, '<strong style="color:#c8a96e;display:block;margin:10px 0 4px;">$1</strong>')
+    .replace(/^## (.+)$/gm,  '<strong style="color:#c8a96e;display:block;margin:10px 0 6px;">$1</strong>')
+    .replace(/^# (.+)$/gm,   '<strong style="color:#c8a96e;display:block;margin:12px 0 6px;">$1</strong>')
+    .replace(/^[-*] (.+)$/gm,'<li style="margin-bottom:4px;">$1</li>')
+    .replace(/^\d+\. (.+)$/gm,'<li style="margin-bottom:4px;">$1</li>')
+    .replace(/(<li[^>]*>.*?<\/li>\n?)+/gs, '<ul style="padding-left:18px;margin:8px 0;">$&</ul>')
+    .replace(/\n{2,}/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+}
+
+function buddyClear() {
+  _buddyHistory = [];
+  var output = document.getElementById('buddyChatOutput');
+  if (output) output.innerHTML = '';
+  var chips  = document.getElementById('buddyChips');
+  if (chips)  chips.style.display = 'flex';
+  _buddyRenderWelcome();
+}
+
+/* Re-render welcome when data loads */
+document.addEventListener('igDataLoaded', function() {
+  var output = document.getElementById('buddyChatOutput');
+  if (output && output.children.length <= 1) {
+    output.innerHTML = '';
+    _buddyHistory = [];
+    _buddyRenderWelcome();
+  }
+});
+
+/* ── Theme observer — watches for dark mode and updates buddy ── */
+(function() {
+  function applyBuddyTheme() {
+    var body = document.body;
+    var html = document.documentElement;
+    var isDark = body.classList.contains('dark') ||
+                 body.classList.contains('dark-mode') ||
+                 body.classList.contains('theme-dark') ||
+                 html.getAttribute('data-theme') === 'dark' ||
+                 html.classList.contains('dark') ||
+                 body.getAttribute('data-theme') === 'dark';
+    /* Force buddy elements to match */
+    var wrap = document.querySelector('.buddy-chat-wrap');
+    var header = document.querySelector('.buddy-header');
+    if (wrap)   wrap.setAttribute('data-buddy-theme',   isDark ? 'dark' : 'light');
+    if (header) header.setAttribute('data-buddy-theme', isDark ? 'dark' : 'light');
+  }
+  /* Watch for theme changes */
+  var observer = new MutationObserver(applyBuddyTheme);
+  document.addEventListener('DOMContentLoaded', function() {
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class', 'data-theme'] });
+    applyBuddyTheme();
+  });
+})();
+
+window.buddyConnect = buddyConnect;
+window.buddySend    = buddySend;
+window.buddyAsk     = buddyAsk;
+window.buddyClear   = buddyClear;
+
+window.fillAIChat = function(text) {
+  var inp = document.getElementById('buddyChatInput');
+  if (inp) { inp.value = text; buddySend(); }
+};
+
+window.showGuestGate  = showGuestGate;
+window.closeGuestGate = closeGuestGate;
+window.guestGateCheck = guestGateCheck;
+
+
+</script>
+
+
+<!-- ── ImpactGrid AI Floating Bubble ── -->
+<!-- Floating bubble uses "dashboard" mode (platform helper)  -->
+<!-- AI Buddy section uses "adviser" mode (financial adviser) -->
+<!-- Dijo AI — permanent Render deployment, no tunnel needed -->
+<script>
+  var IMPACTGRID_AI_URL  = "https://impactgrid-dijo.onrender.com";
+  var IMPACTGRID_AI_MODE = "dashboard";
+</script>
+<script src="impactgrid-chat-bubble.js"></script>
+
+
+<script>
+/* ================================================================
+   IMPACTGRID MATRIX ENGINE — KPIs, Gauge, Benchmark, Risk Radar
+   Called by script.js updateAll() via window.updateMatrixSection()
+================================================================ */
+
+var _riskRadarChart = null;
+
+function updateMatrixSection() {
+  var data     = window.businessData || [];
+  var currency = window.currentCurrency || 'GBP';
+  if (data.length < 1) return;
+
+  var sym = {GBP:'£',USD:'$',EUR:'€',NGN:'₦'}[currency] || currency+' ';
+  function fc(v) {
+    try { return new Intl.NumberFormat(undefined,{style:'currency',currency:currency,maximumFractionDigits:0}).format(v); }
+    catch(e){ return sym + Math.round(v).toLocaleString(); }
+  }
+
+  /* ── Compute metrics ── */
+  var totalRev  = data.reduce(function(s,d){return s+(d.revenue||0);},0);
+  var totalExp  = data.reduce(function(s,d){return s+(d.expenses||0);},0);
+  var totalProf = data.reduce(function(s,d){return s+(d.profit||0);},0);
+  var n         = data.length;
+  var avgRev    = totalRev / n;
+  var margin    = totalRev > 0 ? (totalProf/totalRev*100) : 0;
+  var expRatio  = totalRev > 0 ? (totalExp/totalRev*100) : 0;
+
+  var growthRates = [];
+  for (var i=1;i<n;i++) {
+    if (data[i-1].revenue>0) growthRates.push((data[i].revenue-data[i-1].revenue)/data[i-1].revenue*100);
+  }
+  var avgGrowth = growthRates.length>0 ? growthRates.reduce(function(a,b){return a+b;},0)/growthRates.length : 0;
+
+  var revs   = data.map(function(d){return d.revenue;});
+  var mean   = totalRev/n;
+  var stdDev = Math.sqrt(revs.reduce(function(a,b){return a+Math.pow(b-mean,2);},0)/n);
+  var volatility = mean>0 ? (stdDev/mean*100) : 0;
+
+  var overallGrowth = data[0].revenue>0 ? (data[n-1].revenue-data[0].revenue)/data[0].revenue*100 : 0;
+
+  /* ── KPI Cards ── */
+  function setKPI(id,val) { var el=document.getElementById(id); if(el) el.textContent=val; }
+  function setTrend(id,val,isReverse) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var good = isReverse ? val<0 : val>0;
+    var cls  = Math.abs(val)<0.5 ? 'flat' : good ? 'up' : 'down';
+    el.className = 'kpi-trend ' + cls;
+    el.textContent = (val>=0?'+':'')+val.toFixed(1)+'%';
+  }
+
+  setKPI('kpiRevenue', fc(totalRev));
+  setKPI('kpiProfit',  fc(totalProf));
+  setKPI('kpiMargin',  margin.toFixed(1)+'%');
+  setKPI('kpiAvgRev',  fc(avgRev));
+  setKPI('kpiExpRatio', expRatio.toFixed(1)+'%');
+  setKPI('kpiGrowth',  avgGrowth.toFixed(1)+'%');
+
+  setTrend('kpiRevTrend',    overallGrowth,  false);
+  setTrend('kpiProfTrend',   overallGrowth,  false);
+  setTrend('kpiMarginTrend', margin-15,       false);
+  setTrend('kpiExpTrend',    expRatio-80,     true);
+  setTrend('kpiGrowthTrend', avgGrowth,       false);
+
+  /* ── Health Gauge ── */
+  if (n >= 3) {
+    var score = 0;
+    score += Math.min(30, Math.max(0, margin * 1.2));
+    score += Math.min(25, Math.max(0, avgGrowth * 3));
+    score += Math.min(25, Math.max(0, 25 - volatility*0.5));
+    score += Math.min(20, Math.max(0, (100-expRatio)*0.5));
+    score = Math.min(100, Math.max(0, Math.round(score)));
+
+    var color = score>=70 ? '#2dd4a0' : score>=45 ? '#c8a96e' : '#ff4d6d';
+    var label = score>=70 ? 'Strong' : score>=45 ? 'Moderate' : 'Under Pressure';
+
+    /* Animate gauge arc — 204px is full semicircle at r=65 */
+    var fill = document.getElementById('gaugeFill');
+    if (fill) {
+      var offset = 204 - (score/100 * 204);
+      setTimeout(function(){ fill.style.strokeDashoffset = offset; fill.style.stroke = color; }, 100);
+    }
+    var gNum = document.getElementById('gaugeNumber');
+    if (gNum) { gNum.textContent = score; gNum.style.color = color; }
+    var gTitle = document.getElementById('gaugeTitle');
+    if (gTitle) gTitle.textContent = 'Business Health: ' + label;
+    var gSub = document.getElementById('gaugeSub');
+    if (gSub) gSub.textContent = score>=70
+      ? 'Your business is financially healthy. Revenue is stable, margins are solid, and costs are well-controlled.'
+      : score>=45
+      ? 'Your business is performing moderately. There are specific areas to improve — see the breakdown below.'
+      : 'Your business is under financial pressure. Focus on the highest-priority items in the breakdown.';
+
+    /* Sub-bars */
+    var bars = document.getElementById('gaugeBars');
+    if (bars) {
+      var components = [
+        { label:'Margin',     score: Math.min(100,Math.max(0,margin*5)),     color:'#2dd4a0' },
+        { label:'Growth',     score: Math.min(100,Math.max(0,50+avgGrowth*5)),color:'#7eb3ff' },
+        { label:'Stability',  score: Math.min(100,Math.max(0,100-volatility*1.5)),color:'#c8a96e' },
+        { label:'Cost Ctrl',  score: Math.min(100,Math.max(0,(100-expRatio)*1.5)),color:'#ff9f43' },
+      ];
+      bars.innerHTML = components.map(function(c){
+        return '<div class="gauge-bar-row">'
+          + '<span class="gauge-bar-label">' + c.label + '</span>'
+          + '<div class="gauge-bar-track"><div class="gauge-bar-fill" style="width:'+Math.round(c.score)+'%;background:'+c.color+';"></div></div>'
+          + '<span class="gauge-bar-val">' + Math.round(c.score) + '</span>'
+          + '</div>';
+      }).join('');
+    }
+  }
+
+  /* ── Benchmark Table ── */
+  var tbody = document.getElementById('benchmarkTableBody');
+  if (tbody && n>=2) {
+    var rows = [
+      { metric:'Profit Margin',   yours:margin.toFixed(1)+'%',    bench:'10–15%',   good: margin>=10,   warn: margin>=6 },
+      { metric:'Expense Ratio',   yours:expRatio.toFixed(1)+'%',  bench:'75–82%',   good: expRatio<=82, warn: expRatio<=88 },
+      { metric:'Monthly Growth',  yours:avgGrowth.toFixed(1)+'%', bench:'2–5%',      good: avgGrowth>=2, warn: avgGrowth>=0 },
+      { metric:'Revenue Vol.',    yours:volatility.toFixed(1)+'%',bench:'< 20%',     good: volatility<20,warn: volatility<35 },
+    ];
+    tbody.innerHTML = rows.map(function(r){
+      var cls  = r.good ? 'bm-good' : r.warn ? 'bm-warn' : 'bm-bad';
+      var stat = r.good ? '✓ On track' : r.warn ? '~ Improving' : '✗ Needs work';
+      return '<tr><td style="color:var(--text-primary,#0f1629);font-weight:600;">'+r.metric+'</td>'
+        + '<td style="color:var(--text-primary,#0f1629);">'+r.yours+'</td>'
+        + '<td>'+r.bench+'</td>'
+        + '<td><span class="bm-pill '+cls+'">'+stat+'</span></td></tr>';
+    }).join('');
+  }
+}
+
+/* ================================================================
+   RISK SECTION ENGINE — updates cards, meters, radar, Dijo insight
+================================================================ */
+function updateRiskSection() {
+  var data     = window.businessData || [];
+  var currency = window.currentCurrency || 'GBP';
+  if (data.length < 2) return;
+
+  var n        = data.length;
+  var totalRev = data.reduce(function(s,d){return s+(d.revenue||0);},0);
+  var totalExp = data.reduce(function(s,d){return s+(d.expenses||0);},0);
+  var totalProf= data.reduce(function(s,d){return s+(d.profit||0);},0);
+  var avgRev   = totalRev/n;
+  var margin   = totalRev>0 ? totalProf/totalRev*100 : 0;
+  var expRatio = totalRev>0 ? totalExp/totalRev*100 : 0;
+
+  var revs   = data.map(function(d){return d.revenue;});
+  var mean   = totalRev/n;
+  var stdDev = Math.sqrt(revs.reduce(function(a,b){return a+Math.pow(b-mean,2);},0)/n);
+  var volatility = mean>0 ? stdDev/mean*100 : 0;
+
+  var growthRates = [];
+  for(var i=1;i<n;i++) {
+    if(data[i-1].revenue>0) growthRates.push((data[i].revenue-data[i-1].revenue)/data[i-1].revenue*100);
+  }
+  var avgGrowth = growthRates.length>0 ? growthRates.reduce(function(a,b){return a+b;},0)/growthRates.length : 0;
+
+  function riskColor(level) {
+    return level==='Low'?'#2dd4a0':level==='Moderate'?'#c8a96e':level==='Elevated'?'#ff9f43':'#ff4d6d';
+  }
+
+  /* ── Stability Card ── */
+  var stabLevel = volatility<15?'Low':volatility<30?'Moderate':volatility<50?'Elevated':'High';
+  var stabScore = Math.max(0,Math.min(100, 100-volatility*1.5));
+  _setRiskCard('stability', stabLevel, stabScore,
+    volatility<15 ? 'Revenue is highly consistent month to month'
+    : volatility<30 ? 'Some variation — consider recurring revenue streams'
+    : 'High revenue swings — focus on predictable income sources');
+
+  /* ── Margin Card ── */
+  var margLevel = margin>20?'Low':margin>10?'Moderate':margin>5?'Elevated':'High';
+  var margScore = Math.max(0,Math.min(100, margin*4));
+  _setRiskCard('margin', margLevel, margScore,
+    margin>20 ? 'Strong margins — good buffer against shocks'
+    : margin>10 ? 'Acceptable — aim for 20%+ for resilience'
+    : margin>5 ? 'Thin margins — vulnerable to cost increases'
+    : 'Very low margins — urgent improvement needed');
+
+  /* ── Liquidity Card ── */
+  var avgProf   = totalProf/n;
+  var cashPos   = avgProf>0 ? 'Positive' : 'Negative';
+  var liqLevel  = avgProf>avgRev*0.15?'Low':avgProf>0?'Moderate':avgProf>-avgRev*0.1?'Elevated':'High';
+  var liqScore  = Math.max(0,Math.min(100, 50 + (avgProf/avgRev)*200));
+  _setRiskCard('liquidity', liqLevel, liqScore,
+    avgProf>avgRev*0.15 ? 'Healthy cash generation — '+cashPos+' monthly flow'
+    : avgProf>0 ? 'Cash-flow '+cashPos+' but slim — build a reserve'
+    : 'Cash-flow '+cashPos+' — expenses exceeding revenue');
+
+  /* ── Growth Risk Card ── */
+  var growthLevel = avgGrowth>3?'Low':avgGrowth>0?'Moderate':avgGrowth>-3?'Elevated':'High';
+  var growthScore = Math.max(0,Math.min(100, 50+avgGrowth*8));
+  _setRiskCard('growthRisk', growthLevel, growthScore,
+    avgGrowth>3 ? 'Strong growth momentum — sustain it'
+    : avgGrowth>0 ? 'Slow but positive — accelerate acquisition'
+    : 'Declining revenue — diagnose the cause urgently');
+
+  /* ── Risk Radar Chart ── */
+  _updateRiskRadar([stabScore, margScore, liqScore, growthScore, Math.max(0,100-expRatio*0.8)]);
+
+  /* ── Dijo Auto-Insight ── */
+  if (n>=3) _generateDijoRiskInsight(data, margin, volatility, avgGrowth, expRatio, currency);
+}
+
+function _setRiskCard(prefix, level, score, desc) {
+  var color = level==='Low'?'#2dd4a0':level==='Moderate'?'#c8a96e':level==='Elevated'?'#ff9f43':'#ff4d6d';
+  var icon  = level==='Low'?'✅':level==='Moderate'?'⚠️':level==='Elevated'?'🔶':'🚨';
+
+  var valEl = document.getElementById(prefix+'Risk');
+  var descEl= document.getElementById(prefix+'Desc');
+  var accEl = document.getElementById(prefix+'Accent');
+  var iconEl= document.getElementById(prefix+'Icon');
+  var metEl = document.getElementById(prefix+'Meter');
+
+  if(valEl) { valEl.textContent = level+' Risk'; valEl.style.color = color; }
+  if(descEl) descEl.textContent = desc;
+  if(accEl) accEl.style.background = color;
+  if(iconEl) { iconEl.textContent = icon; iconEl.style.background = 'rgba('+_hexToRgb(color)+',0.12)'; }
+  if(metEl) { metEl.style.width = Math.round(score)+'%'; metEl.style.background = color; }
+}
+
+function _hexToRgb(hex) {
+  var r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return r+','+g+','+b;
+}
+
+function _updateRiskRadar(scores) {
+  var ctx = document.getElementById('riskRadarChart');
+  if (!ctx) return;
+  if (_riskRadarChart) { _riskRadarChart.destroy(); _riskRadarChart = null; }
+  _riskRadarChart = new Chart(ctx.getContext('2d'), {
+    type: 'radar',
+    data: {
+      labels: ['Stability','Margin','Cash Flow','Growth','Cost Control'],
+      datasets: [{
+        label: 'Your Business',
+        data: scores.map(function(s){ return Math.round(s); }),
+        backgroundColor: 'rgba(200,169,110,0.12)',
+        borderColor: 'rgba(200,169,110,0.6)',
+        borderWidth: 2,
+        pointBackgroundColor: '#c8a96e',
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        r: {
+          min:0, max:100,
+          ticks: { display:false },
+          grid: { color:'rgba(255,255,255,0.06)' },
+          angleLines: { color:'rgba(255,255,255,0.06)' },
+          pointLabels: {
+            font: { family:"'JetBrains Mono',monospace", size:10 },
+            color: 'rgba(160,176,204,0.8)'
+          }
+        }
+      },
+      plugins: { legend: { display:false } }
+    }
+  });
+}
+
+/* Auto-generate Dijo risk insight from local AI engine */
+function _generateDijoRiskInsight(data, margin, volatility, avgGrowth, expRatio, currency) {
+  var el = document.getElementById('riskInsight');
+  var chips = document.getElementById('riskInsightChips');
+  var status = document.getElementById('dijoRiskStatus');
+  if (!el) return;
+
+  /* Show typing indicator */
+  el.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:var(--text-muted);">'
+    + '<div class="dijo-typing-dots">'
+    + '<div class="dijo-dot"></div><div class="dijo-dot"></div><div class="dijo-dot"></div>'
+    + '</div><span style="font-size:12px;font-family:monospace;">Dijo is analysing your risk profile…</span></div>';
+
+  setTimeout(function() {
+    /* Use local AI engine for instant insight */
+    try {
+      var fin = ImpactGridAI.buildFinancials(data, currency);
+      var insight = ImpactGridAI.riskAnalysis(fin, currency);
+      /* Strip chip buttons from insight — we have our own */
+      insight = insight.replace(/<div class='ai-suggestions'>[\s\S]*?<\/div>/, '');
+      el.innerHTML = insight;
+    } catch(e) {
+      /* Fallback: write insight directly */
+      var lines = [];
+      if (volatility > 30) lines.push('<strong>⚠ High Volatility:</strong> Your revenue swings by ' + volatility.toFixed(0) + '% — unpredictable cash flow makes planning difficult.');
+      if (margin < 10)     lines.push('<strong>⚠ Thin Margins:</strong> At ' + margin.toFixed(1) + '% profit margin, a single bad month could push you into loss.');
+      if (expRatio > 85)   lines.push('<strong>⚠ High Costs:</strong> ' + expRatio.toFixed(0) + 'p of every £1 earned goes on expenses. The SME benchmark is 75–80%.');
+      if (avgGrowth < 0)   lines.push('<strong>⚠ Declining Revenue:</strong> Revenue has been trending downward. This needs diagnosis before it compounds.');
+      if (lines.length === 0) lines.push('<strong>✓ No Critical Risks:</strong> Your business shows no major red flags. Maintain financial discipline and build a 3-month expense reserve.');
+      el.innerHTML = '<p>' + lines.join('</p><p>') + '</p>';
+    }
+    if (chips) chips.style.display = 'flex';
+    if (status) status.textContent = 'Generated ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  }, 900);
+}
+
+function refreshDijoRiskInsight() {
+  var data = window.businessData || [];
+  if (data.length < 3) return;
+  var currency = window.currentCurrency || 'GBP';
+  var totalRev  = data.reduce(function(s,d){return s+(d.revenue||0);},0);
+  var totalProf = data.reduce(function(s,d){return s+(d.profit||0);},0);
+  var totalExp  = data.reduce(function(s,d){return s+(d.expenses||0);},0);
+  var n = data.length;
+  var margin    = totalRev>0 ? totalProf/totalRev*100 : 0;
+  var expRatio  = totalRev>0 ? totalExp/totalRev*100 : 0;
+  var revs      = data.map(function(d){return d.revenue;});
+  var mean      = totalRev/n;
+  var stdDev    = Math.sqrt(revs.reduce(function(a,b){return a+Math.pow(b-mean,2);},0)/n);
+  var volatility= mean>0 ? stdDev/mean*100 : 0;
+  var growthRates=[];
+  for(var i=1;i<n;i++) if(data[i-1].revenue>0) growthRates.push((data[i].revenue-data[i-1].revenue)/data[i-1].revenue*100);
+  var avgGrowth = growthRates.length>0 ? growthRates.reduce(function(a,b){return a+b;},0)/growthRates.length : 0;
+  _generateDijoRiskInsight(data, margin, volatility, avgGrowth, expRatio, currency);
+}
+
+/* ── Hook into updateAll ── */
+var _origUpdateAll = window.updateAll;
+window.updateAll = function() {
+  if (_origUpdateAll) _origUpdateAll.apply(this, arguments);
+  try { updateMatrixSection(); } catch(e){ console.warn('Matrix update error:',e); }
+  try { updateRiskSection();   } catch(e){ console.warn('Risk update error:',e); }
+};
+
+/* Also fire on data load event */
+document.addEventListener('igDataLoaded', function() {
+  setTimeout(function(){
+    try { updateMatrixSection(); } catch(e){}
+    try { updateRiskSection();   } catch(e){}
+  }, 200);
+});
+
+window.updateMatrixSection  = updateMatrixSection;
+window.updateRiskSection    = updateRiskSection;
+window.refreshDijoRiskInsight = refreshDijoRiskInsight;
+</script>
+
+
+<script>
+/* ── Exit Intent — show gate when mouse leaves viewport top (desktop) ── */
+(function() {
+  var _exitShown = false;
+  document.addEventListener('mouseleave', function(e) {
+    if (_exitShown) return;
+    if (window.__igLoggedIn) return;
+    if (e.clientY > 20) return; /* only trigger on top exit */
+    var hasData = window.businessData && window.businessData.length > 0;
+    if (!hasData) return; /* only show if they've entered data */
+    _exitShown = true;
+    /* Customise teaser message */
+    var teaserTitle = document.querySelector('#ggTeaser div[style*="font-size:21px"]');
+    if (teaserTitle) teaserTitle.textContent = "Wait — do not lose your data!";
+    var teaserSub = document.querySelector('#ggTeaser div[style*="font-size:13px"]');
+    if (teaserSub) teaserSub.textContent = 'You have ' + window.businessData.length + ' month' + (window.businessData.length>1?'s':'') + ' of data entered. Create a free account in 20 seconds to save it.';
+    showGuestGate();
+  });
+})();
+</script>
+
+
+<!-- ================================================
+     ONBOARDING WIZARD — shown once to new users
+================================================ -->
+<style>
+  #onboardingOverlay {
+    display:none; position:fixed; inset:0; z-index:5000;
+    background:rgba(6,8,15,0.88); backdrop-filter:blur(12px);
+    align-items:center; justify-content:center; padding:16px;
+  }
+  .ob-card {
+    background:#0e1220; border:1px solid rgba(200,169,110,0.25);
+    border-radius:24px; width:100%; max-width:480px;
+    overflow:hidden; position:relative;
+    box-shadow:0 32px 80px rgba(0,0,0,0.6);
+    animation:gg-modal-in 0.3s cubic-bezier(0.34,1.3,0.64,1);
+  }
+  .ob-gold-line {
+    height:2px; background:linear-gradient(to right,transparent,#d4a043,transparent);
+  }
+  .ob-progress {
+    display:flex; gap:6px; padding:20px 28px 0;
+  }
+  .ob-dot {
+    flex:1; height:3px; border-radius:2px;
+    background:rgba(255,255,255,0.08); transition:background 0.3s;
+  }
+  .ob-dot.active { background:#d4a043; }
+  .ob-body { padding:28px 32px 24px; }
+  .ob-step { display:none; }
+  .ob-step.active { display:block; }
+  .ob-icon {
+    width:52px; height:52px; border-radius:14px;
+    background:linear-gradient(135deg,rgba(200,169,110,0.15),rgba(200,169,110,0.06));
+    border:1px solid rgba(200,169,110,0.25);
+    display:flex; align-items:center; justify-content:center;
+    font-size:22px; margin-bottom:18px;
+  }
+  .ob-title {
+    font-family:'Plus Jakarta Sans',sans-serif;
+    font-size:20px; font-weight:800; color:#edf0f7;
+    margin-bottom:8px; letter-spacing:-0.3px; line-height:1.2;
+  }
+  .ob-sub {
+    font-size:13px; color:rgba(255,255,255,0.45);
+    line-height:1.65; margin-bottom:22px;
+    font-family:'DM Sans',sans-serif;
+  }
+  .ob-biz-grid {
+    display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:22px;
+  }
+  .ob-biz-btn {
+    padding:12px 10px; border-radius:10px;
+    border:1.5px solid rgba(200,169,110,0.18);
+    background:rgba(200,169,110,0.04);
+    color:rgba(255,255,255,0.6); font-size:12px;
+    font-family:'DM Sans',sans-serif; font-weight:600;
+    cursor:pointer; transition:all 0.18s; text-align:center;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+  }
+  .ob-biz-btn:hover, .ob-biz-btn.selected {
+    border-color:rgba(200,169,110,0.5);
+    background:rgba(200,169,110,0.1);
+    color:#edf0f7;
+  }
+  .ob-biz-btn .ob-biz-icon { font-size:20px; }
+  .ob-btn-primary {
+    width:100%; padding:13px;
+    background:linear-gradient(135deg,#8a6020,#d4a043,#b07d2e);
+    border:none; border-radius:10px; color:#fff;
+    font-family:'DM Sans',sans-serif; font-size:14px; font-weight:700;
+    cursor:pointer; transition:filter 0.15s; letter-spacing:0.01em;
+    box-shadow:0 4px 18px rgba(176,125,46,0.25);
+  }
+  .ob-btn-primary:hover { filter:brightness(1.08); }
+  .ob-btn-skip {
+    display:block; width:100%; margin-top:10px;
+    background:transparent; border:none;
+    font-family:'JetBrains Mono',monospace; font-size:11px;
+    color:rgba(255,255,255,0.2); cursor:pointer; letter-spacing:0.04em;
+    padding:6px; transition:color 0.2s;
+  }
+  .ob-btn-skip:hover { color:rgba(255,255,255,0.4); }
+  .ob-demo-preview {
+    border-radius:10px; overflow:hidden;
+    border:1px solid rgba(200,169,110,0.15);
+    margin-bottom:20px;
+  }
+  .ob-demo-row {
+    display:grid; grid-template-columns:1fr 1fr 1fr 1fr;
+    padding:9px 14px; font-size:11px;
+    font-family:'JetBrains Mono',monospace; letter-spacing:0.02em;
+    border-bottom:1px solid rgba(255,255,255,0.04);
+  }
+  .ob-demo-row:last-child { border-bottom:none; }
+  .ob-demo-row.header { color:rgba(200,169,110,0.6); font-size:9px; letter-spacing:0.1em; }
+  .ob-demo-row.data { color:rgba(160,176,204,0.8); }
+  .ob-demo-row .profit-pos { color:#2dd4a0; }
+  .ob-demo-row .profit-neg { color:#ff4d6d; }
+  .ob-highlight-box {
+    padding:14px 16px; border-radius:10px;
+    background:rgba(45,212,160,0.07);
+    border:1px solid rgba(45,212,160,0.2);
+    margin-bottom:20px;
+    font-size:12.5px; color:rgba(255,255,255,0.6);
+    font-family:'DM Sans',sans-serif; line-height:1.6;
+  }
+  .ob-highlight-box strong { color:#2dd4a0; }
+  .ob-arrow-hint {
+    display:flex; align-items:center; gap:10px; margin-bottom:20px;
+    padding:12px 14px; border-radius:10px;
+    background:rgba(200,169,110,0.06);
+    border:1px dashed rgba(200,169,110,0.25);
+    font-size:12px; color:rgba(200,169,110,0.8);
+    font-family:'DM Sans',sans-serif;
+  }
+</style>
+
+<div id="onboardingOverlay" style="display:none;position:fixed;inset:0;z-index:5000;background:rgba(6,8,15,0.88);backdrop-filter:blur(12px);align-items:center;justify-content:center;padding:16px;">
+  <div class="ob-card">
+    <div class="ob-gold-line"></div>
+    <div class="ob-progress">
+      <div class="ob-dot active" id="obDot0"></div>
+      <div class="ob-dot" id="obDot1"></div>
+      <div class="ob-dot" id="obDot2"></div>
+    </div>
+    <div class="ob-body">
+
+      <!-- Step 1: Business type -->
+      <div class="ob-step active" id="obStep0">
+        <div class="ob-icon">👋</div>
+        <div class="ob-title">Welcome to ImpactGrid</div>
+        <div class="ob-sub">Your free financial command centre. First — what kind of business do you run? We'll tailor your benchmarks and insights.</div>
+        <div class="ob-biz-grid">
+          <button class="ob-biz-btn" onclick="obSelectBiz('cafe',this)"><span class="ob-biz-icon">☕</span>Café / Food</button>
+          <button class="ob-biz-btn" onclick="obSelectBiz('retail',this)"><span class="ob-biz-icon">🛍</span>Retail</button>
+          <button class="ob-biz-btn" onclick="obSelectBiz('consulting',this)"><span class="ob-biz-icon">💼</span>Consulting</button>
+          <button class="ob-biz-btn" onclick="obSelectBiz('trade',this)"><span class="ob-biz-icon">🔧</span>Trades</button>
+          <button class="ob-biz-btn" onclick="obSelectBiz('ecommerce',this)"><span class="ob-biz-icon">🛒</span>E-commerce</button>
+          <button class="ob-biz-btn" onclick="obSelectBiz('other',this)"><span class="ob-biz-icon">📋</span>Other</button>
+        </div>
+        <button class="ob-btn-primary" id="obStep0Btn" onclick="obNext(1)" disabled style="opacity:0.4;cursor:not-allowed;">Next →</button>
+        <button class="ob-btn-skip" onclick="obSkip()">Skip setup</button>
+      </div>
+
+      <!-- Step 2: See the product with sample data -->
+      <div class="ob-step" id="obStep1">
+        <div class="ob-icon">📊</div>
+        <div class="ob-title">See ImpactGrid in action</div>
+        <div class="ob-sub">Load 6 months of sample data to explore all charts, your health score, and AI insights — before entering your own numbers.</div>
+        <div class="ob-demo-preview">
+          <div class="ob-demo-row header"><span>Month</span><span>Revenue</span><span>Expenses</span><span>Profit</span></div>
+          <div class="ob-demo-row data"><span>Oct 2024</span><span>£4,200</span><span>£3,100</span><span class="profit-pos">£1,100</span></div>
+          <div class="ob-demo-row data"><span>Nov 2024</span><span>£5,800</span><span>£3,400</span><span class="profit-pos">£2,400</span></div>
+          <div class="ob-demo-row data"><span>Dec 2024</span><span>£7,200</span><span>£4,100</span><span class="profit-pos">£3,100</span></div>
+          <div class="ob-demo-row data"><span>Jan 2025</span><span>£3,900</span><span>£3,600</span><span class="profit-pos">£300</span></div>
+          <div class="ob-demo-row data"><span>Feb 2025</span><span>£4,500</span><span>£3,200</span><span class="profit-pos">£1,300</span></div>
+          <div class="ob-demo-row data"><span>Mar 2025</span><span>£5,100</span><span>£3,300</span><span class="profit-pos">£1,800</span></div>
+        </div>
+        <div class="ob-highlight-box"><strong>✓ Free to explore</strong> — sample data is replaced the moment you enter your own numbers. Nothing is saved to your account.</div>
+        <button class="ob-btn-primary" onclick="obLoadSampleData()">Load sample data &amp; explore →</button>
+        <button class="ob-btn-skip" onclick="obNext(2)">Skip — I'll enter my own data</button>
+      </div>
+
+      <!-- Step 3: Enter first real month -->
+      <div class="ob-step" id="obStep2">
+        <div class="ob-icon">✏️</div>
+        <div class="ob-title">Add your first month</div>
+        <div class="ob-sub">Enter one month of revenue and expenses. ImpactGrid will instantly show you your profit margin, health score, and what to focus on.</div>
+        <div class="ob-arrow-hint">
+          <span style="font-size:18px;">👇</span>
+          <span>The data entry form is just below — pick a month, enter your numbers, and hit <strong style="color:#d4a043;">+ Add Record</strong></span>
+        </div>
+        <div class="ob-highlight-box"><strong>Add 3 months</strong> to unlock AI insights, risk scoring, forecasts and your full financial health score.</div>
+        <button class="ob-btn-primary" onclick="obFinish()">Got it — let's go →</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   ONBOARDING WIZARD
+   Shown once to new/guest users. Dismissed permanently after finish.
+================================================================ */
+var _obSelectedBiz = null;
+
+function obSelectBiz(type, btn) {
+  _obSelectedBiz = type;
+  document.querySelectorAll('.ob-biz-btn').forEach(function(b){ b.classList.remove('selected'); });
+  btn.classList.add('selected');
+  var nextBtn = document.getElementById('obStep0Btn');
+  if (nextBtn) { nextBtn.disabled = false; nextBtn.style.opacity = '1'; nextBtn.style.cursor = 'pointer'; }
+}
+
+function obNext(step) {
+  /* Apply biz type selection */
+  if (step === 1 && _obSelectedBiz) {
+    var bt = document.getElementById('businessType');
+    if (bt) { bt.value = _obSelectedBiz; bt.dispatchEvent(new Event('change')); }
+  }
+  document.querySelectorAll('.ob-step').forEach(function(s){ s.classList.remove('active'); });
+  document.querySelectorAll('.ob-dot').forEach(function(d,i){ d.classList.toggle('active', i <= step); });
+  var s = document.getElementById('obStep'+step);
+  if (s) s.classList.add('active');
+}
+
+function obLoadSampleData() {
+  /* Load sample data into businessData */
+  var samples = [
+    { date: new Date('2024-10-01'), revenue:4200, expenses:3100, profit:1100, savedAt: new Date().toISOString(), _isSample:true },
+    { date: new Date('2024-11-01'), revenue:5800, expenses:3400, profit:2400, savedAt: new Date().toISOString(), _isSample:true },
+    { date: new Date('2024-12-01'), revenue:7200, expenses:4100, profit:3100, savedAt: new Date().toISOString(), _isSample:true },
+    { date: new Date('2025-01-01'), revenue:3900, expenses:3600, profit:300,  savedAt: new Date().toISOString(), _isSample:true },
+    { date: new Date('2025-02-01'), revenue:4500, expenses:3200, profit:1300, savedAt: new Date().toISOString(), _isSample:true },
+    { date: new Date('2025-03-01'), revenue:5100, expenses:3300, profit:1800, savedAt: new Date().toISOString(), _isSample:true },
+  ];
+  window.businessData.length = 0;
+  samples.forEach(function(d){ window.businessData.push(d); });
+  window.__igSampleDataLoaded = true;
+
+  if (typeof updateAll          === 'function') updateAll();
+  if (typeof renderRecordsPanel === 'function') renderRecordsPanel();
+  if (typeof updateMatrixSection=== 'function') updateMatrixSection();
+  if (typeof updateRiskSection  === 'function') updateRiskSection();
+
+  /* Show sample banner */
+  _obShowSampleBanner();
+
+  obNext(2);
+}
+
+function _obShowSampleBanner() {
+  if (document.getElementById('sampleDataBanner')) return;
+  var header = document.querySelector('.dashboard-header');
+  if (!header) return;
+  var banner = document.createElement('div');
+  banner.id = 'sampleDataBanner';
+  banner.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px;padding:11px 16px;background:linear-gradient(135deg,rgba(37,99,235,0.08),rgba(37,99,235,0.04));border:1px solid rgba(37,99,235,0.25);border-radius:10px;font-size:12px;font-family:"DM Sans",sans-serif;color:rgba(255,255,255,0.5);flex-wrap:wrap;gap:10px;';
+  banner.innerHTML = '<span>📊 <strong style="color:#7eb3ff;">Sample data loaded</strong> — explore all features freely. Your own data will replace this.</span>'
+    + '<button onclick="obClearSampleData()" style="flex-shrink:0;padding:6px 14px;background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.3);border-radius:7px;color:#7eb3ff;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:sans-serif;">Clear sample data</button>';
+  header.appendChild(banner);
+}
+
+function obClearSampleData() {
+  window.businessData.length = 0;
+  window.__igSampleDataLoaded = false;
+  var banner = document.getElementById('sampleDataBanner');
+  if (banner) banner.remove();
+  if (typeof updateAll          === 'function') updateAll();
+  if (typeof renderRecordsPanel === 'function') renderRecordsPanel();
+}
+
+function obFinish() {
+  document.getElementById('onboardingOverlay').style.display = 'none';
+  try { localStorage.setItem('ig_onboarding_done', '1'); } catch(e){}
+  /* If sample data is loaded, keep it and scroll to data entry */
+  if (!window.__igSampleDataLoaded) {
+    var form = document.getElementById('month');
+    if (form) form.focus();
+  }
+}
+
+function obSkip() {
+  document.getElementById('onboardingOverlay').style.display = 'none';
+  try { localStorage.setItem('ig_onboarding_done', '1'); } catch(e){}
+}
+
+/* Show onboarding to new users on first visit */
+document.addEventListener('DOMContentLoaded', function() {
+  /* Don't show if already done, or if returning logged-in user */
+  var done = false;
+  try { done = localStorage.getItem('ig_onboarding_done') === '1'; } catch(e){}
+  if (done) return;
+
+  /* Wait 600ms for page to render, then show */
+  setTimeout(function() {
+    /* Only show to guests or users who have no data yet */
+    if (window.__igLoggedIn) return; /* logged-in users skip — they know the product */
+    var overlay = document.getElementById('onboardingOverlay');
+    if (overlay) overlay.style.display = 'flex';
+  }, 600);
+});
+
+window.obSelectBiz  = obSelectBiz;
+window.obNext       = obNext;
+window.obLoadSampleData = obLoadSampleData;
+window.obClearSampleData = obClearSampleData;
+window.obFinish     = obFinish;
+window.obSkip       = obSkip;
+</script>
+
+
+<script>
+/* ── Keep Dijo warm — ping every 10 minutes to prevent Render cold start ── */
+(function() {
+  var _dijoWarmUrl = "https://impactgrid-dijo.onrender.com/ping";
+  function _pingDijo() {
+    fetch(_dijoWarmUrl, { method: "GET", cache: "no-store" })
+      .then(function(r){ console.log("[Dijo] warm ping:", r.status); })
+      .catch(function(e){ console.log("[Dijo] ping failed:", e.message); });
+  }
+  _pingDijo(); /* immediate ping on load */
+  setInterval(_pingDijo, 10 * 60 * 1000); /* every 10 minutes */
+})();
+</script>
+</body>
+</html>
