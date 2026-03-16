@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <title>ImpactGrid | Sign In</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+  <script src="supabase.js"></script>
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-97XD9941FC"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-97XD9941FC');</script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ══════════════════════════════════════════
+       THEME TOKENS
+    ══════════════════════════════════════════ */
+    :root {
+      --trans: all 0.28s ease;
+    }
+
+    /* LIGHT (default) */
+    [data-theme="light"] {
+      --bg:          #f0f2f8;
+      --bg2:         #e6e9f2;
+      --surface:     rgba(255,255,255,0.82);
+      --surface-s:   rgba(255,255,255,0.96);
+      --border:      rgba(180,125,46,0.18);
+      --border-ui:   rgba(200,210,235,0.9);
+      --text:        #0d1224;
+      --text-sec:    #3d4a6b;
+      --text-muted:  #7a87aa;
+      --gold:        #a06820;
+      --gold-l:      #c8902e;
+      --gold-glow:   rgba(160,104,32,0.18);
+      --success:     #0a7a5a;
+      --danger:      #c0263e;
+      --card-shadow: 0 24px 64px rgba(20,30,70,0.10), 0 2px 8px rgba(20,30,70,0.06);
+      --card-top:    linear-gradient(to right, transparent, rgba(176,120,40,0.55), transparent);
+      --star-color:  rgba(80,100,160,VAL);
+      --nebula-a:    rgba(176,125,46,0.07);
+      --nebula-b:    rgba(37,99,235,0.05);
+      --toggle-bg:   rgba(15,20,50,0.08);
+      --toggle-icon: #3d4a6b;
+      --field-bg:    rgba(240,242,250,0.9);
+      --field-focus: #fff;
+      --tab-bg:      rgba(220,224,240,0.6);
+      --tab-active-bg: rgba(255,255,255,0.95);
+      --tab-active-text: #0d1224;
+      --tab-text:    #7a87aa;
+      --divider:     rgba(180,190,220,0.7);
+      --btn-google-bg: rgba(255,255,255,0.9);
+      --btn-google-border: rgba(180,190,220,0.9);
+      --btn-google-text: #3d4a6b;
+      --stat-bg:     rgba(255,255,255,0.78);
+      --stat-border: rgba(160,104,32,0.14);
+    }
+
+    /* DARK */
+    [data-theme="dark"] {
+      --bg:          #030508;
+      --bg2:         #060a12;
+      --surface:     rgba(10,13,24,0.82);
+      --surface-s:   rgba(12,16,30,0.97);
+      --border:      rgba(200,169,110,0.18);
+      --border-ui:   rgba(34,43,66,0.9);
+      --text:        #edf0f7;
+      --text-sec:    #a0b8d8;
+      --text-muted:  #6b7fa0;
+      --gold:        #c8a96e;
+      --gold-l:      #e2c98a;
+      --gold-glow:   rgba(200,169,110,0.18);
+      --success:     #2dd4a0;
+      --danger:      #ff4d6d;
+      --card-shadow: 0 32px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(200,169,110,0.07), inset 0 1px 0 rgba(255,255,255,0.04);
+      --card-top:    linear-gradient(to right, transparent, var(--gold-l), transparent);
+      --star-color:  rgba(200,215,245,VAL);
+      --nebula-a:    rgba(176,125,46,0.06);
+      --nebula-b:    rgba(37,99,235,0.05);
+      --toggle-bg:   rgba(200,169,110,0.1);
+      --toggle-icon: #c8a96e;
+      --field-bg:    rgba(6,8,15,0.7);
+      --field-focus: rgba(6,8,15,0.9);
+      --tab-bg:      rgba(6,8,15,0.6);
+      --tab-active-bg: linear-gradient(135deg, rgba(200,169,110,0.15), rgba(226,201,138,0.1));
+      --tab-active-text: #e2c98a;
+      --tab-text:    #6b7fa0;
+      --divider:     rgba(34,43,66,0.9);
+      --btn-google-bg: rgba(255,255,255,0.04);
+      --btn-google-border: rgba(255,255,255,0.1);
+      --btn-google-text: #a0b8d8;
+      --stat-bg:     rgba(10,13,24,0.75);
+      --stat-border: rgba(200,169,110,0.14);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* ══ Canvases ══ */
+    #starsCanvas, #earthCanvas {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      z-index: 0; pointer-events: none;
+      transition: opacity 0.4s ease;
+    }
+
+    /* Stars fade out in light mode */
+    [data-theme="light"] #starsCanvas { opacity: 0.18; }
+    [data-theme="dark"]  #starsCanvas { opacity: 1; }
+
+    /* Earth visibility */
+    [data-theme="light"] #earthCanvas { opacity: 0.55; }
+    [data-theme="dark"]  #earthCanvas { opacity: 1; }
+
+    /* ══ Nebula overlay (theme-aware) ══ */
+    .space-overlay {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      transition: background 0.4s ease;
+    }
+    [data-theme="light"] .space-overlay {
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 50%, rgba(240,242,248,0) 30%, rgba(240,242,248,0.45) 100%),
+        radial-gradient(ellipse 40% 40% at 80% 20%, rgba(160,104,32,0.07) 0%, transparent 70%),
+        radial-gradient(ellipse 35% 35% at 20% 80%, rgba(37,99,235,0.04) 0%, transparent 70%);
+    }
+    [data-theme="dark"] .space-overlay {
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 50%, rgba(3,5,8,0) 30%, rgba(3,5,8,0.5) 100%),
+        radial-gradient(ellipse 40% 40% at 80% 20%, rgba(61,127,255,0.06) 0%, transparent 70%),
+        radial-gradient(ellipse 35% 35% at 20% 80%, rgba(200,169,110,0.04) 0%, transparent 70%);
+    }
+
+    /* ══ Theme toggle button ══ */
+    .theme-toggle {
+      position: fixed;
+      top: 20px; right: 20px;
+      z-index: 200;
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px 8px 10px;
+      background: var(--stat-bg);
+      border: 1px solid var(--stat-border);
+      border-radius: 40px;
+      cursor: pointer;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      transition: var(--trans);
+      color: var(--toggle-icon);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .theme-toggle:hover {
+      border-color: var(--gold);
+      box-shadow: 0 4px 20px var(--gold-glow);
+    }
+    .theme-toggle svg { flex-shrink: 0; transition: transform 0.4s ease; }
+    .theme-toggle:hover svg { transform: rotate(20deg); }
+
+    /* ══ Float stats ══ */
+    .float-stat {
+      position: fixed;
+      background: var(--stat-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--stat-border);
+      border-radius: 14px;
+      padding: 13px 18px;
+      z-index: 5;
+      transition: var(--trans);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    .float-stat .fs-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px; text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--text-muted); margin-bottom: 5px;
+    }
+    .float-stat .fs-val {
+      font-family: 'Fraunces', serif;
+      font-size: 20px; font-weight: 700;
+      color: var(--gold-l); line-height: 1;
+    }
+    .float-stat .fs-sub {
+      font-size: 10px; color: var(--text-muted); margin-top: 3px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .fs-1 { bottom: 18%; left: 4%; }
+    .fs-2 { top: 22%; right: 4%; }
+
+    /* ══ Page layout ══ */
+    .page {
+      position: relative; z-index: 10;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px 20px;
+    }
+    .login-wrap { width: 100%; max-width: 430px; }
+
+    /* ══ Logo ══ */
+    .login-logo {
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 28px; justify-content: center;
+    }
+    .login-logo img {
+      height: 42px; width: auto;
+      filter: drop-shadow(0 0 14px var(--gold-glow));
+      transition: filter 0.3s ease;
+    }
+    .login-logo-text {
+      font-family: 'Fraunces', serif;
+      font-size: 23px; font-weight: 700;
+      color: var(--text);
+      transition: color 0.3s ease;
+    }
+    .login-logo-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8.5px; color: var(--gold);
+      letter-spacing: 0.14em; text-transform: uppercase;
+      opacity: 0.8; margin-top: 3px;
+    }
+
+    /* ══ Card ══ */
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 36px 32px 32px;
+      position: relative;
+      backdrop-filter: blur(28px);
+      -webkit-backdrop-filter: blur(28px);
+      box-shadow: var(--card-shadow);
+      transition: background 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+      animation: cardIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .login-card::before {
+      content: '';
+      position: absolute; top: 0; left: 8%; right: 8%; height: 2px;
+      background: var(--card-top);
+      opacity: 0.65; border-radius: 2px;
+    }
+
+    /* ══ Tabs ══ */
+    .auth-tabs {
+      display: flex;
+      background: var(--tab-bg);
+      border: 1px solid var(--border-ui);
+      border-radius: 12px;
+      padding: 4px; margin-bottom: 26px; gap: 4px;
+      transition: var(--trans);
+    }
+    .auth-tab {
+      flex: 1; padding: 10px;
+      border: none; border-radius: 9px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px; font-weight: 600;
+      cursor: pointer; transition: all 0.2s;
+      background: transparent;
+      color: var(--tab-text);
+      letter-spacing: 0.01em;
+    }
+    .auth-tab.active {
+      background: var(--tab-active-bg);
+      color: var(--tab-active-text);
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+    }
+
+    /* ══ Subtitle ══ */
+    .login-subtitle {
+      font-size: 12.5px; color: var(--text-sec);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.03em; margin-bottom: 22px;
+      line-height: 1.7; transition: color 0.3s;
+    }
+
+    /* ══ Fields ══ */
+    .field { margin-bottom: 15px; }
+    .field label {
+      display: block; font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--text-muted); margin-bottom: 7px;
+      transition: color 0.3s;
+    }
+    .field input {
+      width: 100%; padding: 12px 15px;
+      background: var(--field-bg);
+      border: 1.5px solid var(--border-ui);
+      border-radius: 10px; color: var(--text);
+      font-size: 14px; font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.18s, box-shadow 0.18s, background 0.18s, color 0.3s;
+    }
+    .field input:focus {
+      border-color: var(--gold);
+      background: var(--field-focus);
+      box-shadow: 0 0 0 3px var(--gold-glow);
+    }
+    .field input::placeholder { color: var(--text-muted); opacity: 0.65; }
+
+    /* password eye */
+    .password-wrap { position: relative; display: flex; align-items: center; }
+    .password-wrap input { padding-right: 44px; }
+    .eye-btn {
+      position: absolute; right: 13px;
+      background: none; border: none; cursor: pointer;
+      color: var(--text-muted); padding: 0;
+      display: flex; align-items: center;
+      transition: color 0.15s;
+    }
+    .eye-btn:hover { color: var(--gold); }
+
+    /* ══ Main button ══ */
+    .btn-main {
+      width: 100%; padding: 13px;
+      background: linear-gradient(135deg, #8a5c18, var(--gold-l), #a06820);
+      color: #fff;
+      font-weight: 700; font-size: 14.5px;
+      font-family: 'DM Sans', sans-serif;
+      border: none; border-radius: 10px; cursor: pointer;
+      margin-top: 8px; margin-bottom: 4px;
+      transition: filter 0.15s, transform 0.15s, box-shadow 0.15s;
+      box-shadow: 0 4px 20px var(--gold-glow);
+      letter-spacing: 0.02em;
+    }
+    .btn-main:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 28px var(--gold-glow);
+    }
+    .btn-main:active { transform: translateY(0); }
+    .btn-main:disabled { opacity: 0.6; cursor: not-allowed; transform: none; filter: none; }
+
+    .btn-spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 7px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ══ Divider ══ */
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 18px 0; font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted); letter-spacing: 0.08em;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--divider);
+    }
+
+    /* ══ Google button ══ */
+    .btn-google {
+      width: 100%; padding: 12px;
+      background: var(--btn-google-bg);
+      border: 1.5px solid var(--btn-google-border);
+      border-radius: 10px;
+      color: var(--btn-google-text);
+      font-size: 13.5px; font-family: 'DM Sans', sans-serif;
+      font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    .btn-google:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      box-shadow: 0 2px 12px var(--gold-glow);
+    }
+
+    /* ══ Message ══ */
+    #errorMessage {
+      margin-top: 14px; font-size: 12.5px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 11px 14px; border-radius: 9px;
+      display: none; line-height: 1.6;
+    }
+    #errorMessage.error {
+      background: rgba(192,38,62,0.07);
+      border: 1px solid rgba(192,38,62,0.22);
+      color: var(--danger);
+    }
+    #errorMessage.success {
+      background: rgba(10,122,90,0.07);
+      border: 1px solid rgba(10,122,90,0.22);
+      color: var(--success);
+    }
+    [data-theme="dark"] #errorMessage.error {
+      background: rgba(255,77,109,0.08);
+      border-color: rgba(255,77,109,0.25);
+      color: #ff4d6d;
+    }
+    [data-theme="dark"] #errorMessage.success {
+      background: rgba(45,212,160,0.08);
+      border-color: rgba(45,212,160,0.25);
+      color: #2dd4a0;
+    }
+
+    /* ══ Footer ══ */
+    .login-footer {
+      text-align: center; margin-top: 22px;
+      font-size: 11px; color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.04em; transition: color 0.3s;
+    }
+
+    /* ══ Responsive ══ */
+    @media (max-width: 700px) {
+      .float-stat { display: none; }
+      .login-card { padding: 28px 20px 24px; }
+      .theme-toggle span { display: none; }
+      .theme-toggle { padding: 9px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Canvases -->
+<canvas id="starsCanvas"></canvas>
+<canvas id="earthCanvas"></canvas>
+<div class="space-overlay"></div>
+
+<!-- Theme toggle -->
+<button class="theme-toggle" onclick="toggleTheme()" id="themeToggleBtn" title="Toggle light/dark mode">
+  <svg id="themeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+  </svg>
+  <span id="themeLabel">Dark Mode</span>
+</button>
+
+<!-- Float stats -->
+<div class="float-stat fs-1">
+  <div class="fs-label">Platform Status</div>
+  <div class="fs-val" style="font-size:13px;color:var(--success);">&#9679; LIVE</div>
+  <div class="fs-sub">IFSRM v3.0 Active</div>
+</div>
+<div class="float-stat fs-2">
+  <div class="fs-label">Intelligence Engine</div>
+  <div class="fs-val">17</div>
+  <div class="fs-sub">Analysis Modules</div>
+</div>
+
+<div class="page">
+  <div class="login-wrap">
+
+    <!-- Logo -->
+    <div class="login-logo">
+      <img src="logo.png" alt="ImpactGrid">
+      <div>
+        <div class="login-logo-text">ImpactGrid</div>
+        <div class="login-logo-badge">Financial Intelligence · IFSRM v3.0</div>
+      </div>
+    </div>
+
+    <!-- Card -->
+    <div class="login-card">
+
+      <!-- Tabs -->
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="tabSignup" onclick="setMode(false)">Create Account</button>
+        <button class="auth-tab" id="tabSignin" onclick="setMode(true)">Sign In</button>
+      </div>
+
+      <div class="login-subtitle" id="modeSubtitle">
+        Create your free account — no credit card needed.
+      </div>
+
+      <!-- Signup extra fields -->
+      <div id="signupExtra">
+        <div class="field">
+          <label>Full Name</label>
+          <input type="text" id="fullName" placeholder="Your full name" autocomplete="name">
+        </div>
+        <div class="field">
+          <label>Business Name</label>
+          <input type="text" id="businessName" placeholder="Your business name">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Email Address</label>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <div class="password-wrap">
+          <input type="password" id="password" placeholder="Min. 8 characters"
+            autocomplete="new-password" onkeydown="if(event.key==='Enter')handleAuth()">
+          <button type="button" class="eye-btn" onclick="togglePassword('password','eyeIcon1')" tabindex="-1">
+            <svg id="eyeIcon1" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="field" id="confirmPasswordField">
+        <label>Confirm Password</label>
+        <div class="password-wrap">
+          <input type="password" id="confirmPassword" placeholder="Re-enter your password"
+            autocomplete="new-password" onkeydown="if(event.key==='Enter')handleAuth()">
+          <button type="button" class="eye-btn" onclick="togglePassword('confirmPassword','eyeIcon2')" tabindex="-1">
+            <svg id="eyeIcon2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Forgot password (signin only) -->
+      <div id="forgotRow" style="display:none;text-align:right;margin-top:-6px;margin-bottom:14px;">
+        <a href="#" onclick="showForgotMode();return false;"
+          style="font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text-muted);text-decoration:none;letter-spacing:0.04em;transition:color 0.15s;"
+          onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--text-muted)'">
+          Forgot password?
+        </a>
+      </div>
+
+      <button class="btn-main" id="authButton" onclick="handleAuth()">Create Account</button>
+
+      <div class="divider"><span>or continue with</span></div>
+
+      <button class="btn-google" onclick="handleGoogle()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div id="errorMessage"></div>
+    </div>
+
+    <div class="login-footer">© 2026 ImpactGrid Analytics · impactgridanalytics.com</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ══════════════════════════════════════════
+   THEME
+══════════════════════════════════════════ */
+var currentTheme = localStorage.getItem('ig-theme') || 'light';
+applyTheme(currentTheme);
+
+function applyTheme(t) {
+  currentTheme = t;
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('ig-theme', t);
+  var icon = document.getElementById('themeIcon');
+  var label = document.getElementById('themeLabel');
+  if (t === 'dark') {
+    icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    if (label) label.textContent = 'Light Mode';
+  } else {
+    icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+    if (label) label.textContent = 'Dark Mode';
+  }
+  /* Update star color dynamically */
+  if (window._starsSetColor) window._starsSetColor(t);
+}
+
+function toggleTheme() {
+  applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+}
+
+/* Auto-switch to signup if ?signup=1 */
+(function() {
+  var p = new URLSearchParams(window.location.search);
+  if (p.get('signup') === '1') setMode(false); else setMode(true);
+})();
+
+/* ══════════════════════════════════════════
+   STARS
+══════════════════════════════════════════ */
+(function() {
+  var c = document.getElementById('starsCanvas');
+  var ctx = c.getContext('2d');
+  var stars = [];
+  var theme = currentTheme;
+
+  function resize() { c.width = window.innerWidth; c.height = window.innerHeight; }
+  resize(); window.addEventListener('resize', resize);
+
+  for (var i = 0; i < 320; i++) {
+    stars.push({
+      x: Math.random(), y: Math.random(),
+      r: Math.random() * 1.2 + 0.2,
+      a: Math.random() * 0.7 + 0.1,
+      sp: Math.random() * 0.0004 + 0.0001,
+      ph: Math.random() * Math.PI * 2
+    });
+  }
+
+  window._starsSetColor = function(t) { theme = t; };
+
+  function draw(t) {
+    ctx.clearRect(0, 0, c.width, c.height);
+    var base = theme === 'dark' ? '200,215,245' : '60,80,160';
+    stars.forEach(function(s) {
+      var al = s.a * (0.55 + 0.45 * Math.sin(t * s.sp * 1000 + s.ph));
+      ctx.beginPath();
+      ctx.arc(s.x * c.width, s.y * c.height, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(' + base + ',' + al + ')';
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+})();
+
+/* ══════════════════════════════════════════
+   ROTATING EARTH (Three.js)
+══════════════════════════════════════════ */
+(function() {
+  var W = window.innerWidth, H = window.innerHeight;
+  var renderer = new THREE.WebGLRenderer({
+    canvas: document.getElementById('earthCanvas'),
+    alpha: true, antialias: true
+  });
+  renderer.setSize(W, H);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 1000);
+  camera.position.z = 2.8;
+
+  var geo = new THREE.SphereGeometry(1, 64, 64);
+  var mat = new THREE.MeshPhongMaterial({ specular: new THREE.Color(0x111111), shininess: 12 });
+
+  var loader = new THREE.TextureLoader();
+  loader.load('Earth.png', function(tex) {
+    mat.map = tex; mat.needsUpdate = true;
+  }, undefined, function() {
+    mat.color = new THREE.Color(0x1a4a8a);
+  });
+
+  var earth = new THREE.Mesh(geo, mat);
+  earth.rotation.x = 0.41;
+  scene.add(earth);
+
+  /* Atmosphere glow */
+  var atmMat = new THREE.MeshPhongMaterial({
+    color: 0x4488ff, transparent: true, opacity: 0.09,
+    side: THREE.FrontSide, depthWrite: false
+  });
+  var atm = new THREE.Mesh(new THREE.SphereGeometry(1.048, 64, 64), atmMat);
+  atm.rotation.x = 0.41;
+  scene.add(atm);
+
+  /* Lights */
+  var sun = new THREE.DirectionalLight(0xfff8f0, 1.5);
+  sun.position.set(5, 3, 4);
+  scene.add(sun);
+  scene.add(new THREE.AmbientLight(0x0a0d20, 0.6));
+  var rim = new THREE.DirectionalLight(0x2244cc, 0.22);
+  rim.position.set(-4, -2, -3);
+  scene.add(rim);
+
+  function positionEarth() {
+    var x = window.innerWidth > 900 ? 1.3 : 0;
+    earth.position.x = x; atm.position.x = x;
+    var s = window.innerWidth > 900 ? 1 : 0.82;
+    earth.scale.setScalar(s); atm.scale.setScalar(s);
+  }
+  positionEarth();
+
+  (function animate() {
+    requestAnimationFrame(animate);
+    earth.rotation.y += 0.0016;
+    atm.rotation.y   += 0.0016;
+    renderer.render(scene, camera);
+  })();
+
+  window.addEventListener('resize', function() {
+    W = window.innerWidth; H = window.innerHeight;
+    camera.aspect = W/H; camera.updateProjectionMatrix();
+    renderer.setSize(W, H); positionEarth();
+  });
+})();
+
+/* ══════════════════════════════════════════
+   AUTH STATE
+══════════════════════════════════════════ */
+var isLogin = false;
+var isForgot = false;
+
+/* Session check + OAuth callback */
+window.supabaseReady.then(function(sb) {
+  sb.auth.onAuthStateChange(function(event, session) {
+    if ((event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') && session) {
+      window.location.replace('index.html');
+    }
+  });
+  sb.auth.getSession().then(function(r) {
+    if (r.data && r.data.session) window.location.replace('index.html');
+  });
+});
+
+/* ══ Toggle password visibility ══ */
+function togglePassword(inputId, iconId) {
+  var input = document.getElementById(inputId);
+  var icon  = document.getElementById(iconId);
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.innerHTML = '<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>';
+  } else {
+    input.type = 'password';
+    icon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>';
+  }
+}
+
+/* ══ Switch mode ══ */
+function setMode(login) {
+  isLogin = login;
+  isForgot = false;
+  showMsg('', '');
+
+  document.getElementById('tabSignin').classList.toggle('active', login);
+  document.getElementById('tabSignup').classList.toggle('active', !login);
+  document.getElementById('signupExtra').style.display           = login ? 'none' : 'block';
+  document.getElementById('confirmPasswordField').style.display  = login ? 'none' : 'block';
+  document.getElementById('forgotRow').style.display             = login ? 'block' : 'none';
+  document.getElementById('authButton').textContent              = login ? 'Sign In' : 'Create Account';
+  document.getElementById('modeSubtitle').textContent            = login
+    ? 'Sign in to your ImpactGrid Financial Intelligence account.'
+    : 'Create your free account — no credit card needed.';
+  document.getElementById('password').placeholder   = login ? 'Enter your password' : 'Min. 8 characters';
+  document.getElementById('password').autocomplete  = login ? 'current-password' : 'new-password';
+}
+
+function showForgotMode() {
+  isForgot = true;
+  showMsg('', '');
+  document.getElementById('signupExtra').style.display           = 'none';
+  document.getElementById('confirmPasswordField').style.display  = 'none';
+  document.getElementById('forgotRow').style.display             = 'none';
+  document.getElementById('authButton').textContent              = 'Send Reset Link';
+  document.getElementById('modeSubtitle').textContent            = 'Enter your email and we\'ll send a password reset link.';
+  document.getElementById('password').style.display              = 'none';
+}
+
+/* ══ Main handler ══ */
+async function handleAuth() {
+  var email    = (document.getElementById('email').value || '').trim();
+  var password = isForgot ? '' : (document.getElementById('password').value || '');
+
+  if (!email) { showMsg('Please enter your email address.', 'error'); return; }
+  if (!isForgot && !password) { showMsg('Please enter your password.', 'error'); return; }
+
+  if (!isLogin && !isForgot) {
+    if (password.length < 8) { showMsg('Password must be at least 8 characters.', 'error'); return; }
+    var confirm = (document.getElementById('confirmPassword').value || '');
+    if (password !== confirm) { showMsg('Passwords do not match. Please try again.', 'error'); return; }
+  }
+
+  var btn = document.getElementById('authButton');
+  btn.innerHTML  = '<span class="btn-spinner"></span>Please wait…';
+  btn.disabled   = true;
+
+  try {
+    var sb = await window.supabaseReady;
+
+    if (isForgot) {
+      var { error } = await sb.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/index.html'
+      });
+      if (error) { showMsg(error.message, 'error'); }
+      else { showMsg('✓ Reset link sent to ' + email + '. Check your inbox.', 'success'); }
+
+    } else if (isLogin) {
+      var { data, error } = await sb.auth.signInWithPassword({ email: email, password: password });
+      if (error) {
+        var msg = error.message;
+        if (msg.includes('Invalid login'))       msg = 'Incorrect email or password. Please try again.';
+        if (msg.includes('Email not confirmed')) msg = 'Please confirm your email address before signing in.';
+        showMsg(msg, 'error');
+      } else {
+        showMsg('Signed in! Redirecting...', 'success');
+        setTimeout(function() { window.location.replace('index.html'); }, 500);
+      }
+
+    } else {
+      var meta = {};
+      var fn = (document.getElementById('fullName').value || '').trim();
+      var bn = (document.getElementById('businessName').value || '').trim();
+      if (fn) meta.full_name     = fn;
+      if (bn) meta.business_name = bn;
+
+      var { data, error } = await sb.auth.signUp({
+        email: email, password: password,
+        options: { data: meta, emailRedirectTo: window.location.origin + '/index.html' }
+      });
+
+      if (error) {
+        var msg = error.message;
+        if (msg.includes('already registered') || msg.includes('already exists'))
+          msg = 'An account with this email already exists. Please sign in.';
+        showMsg(msg, 'error');
+      } else if (data.session) {
+        showMsg('Account created! Taking you to ImpactGrid…', 'success');
+        setTimeout(function() { window.location.replace('index.html'); }, 700);
+      } else {
+        showMsg('✓ Account created! Check your email (' + email + ') for a confirmation link, then sign in.', 'success');
+        setTimeout(function() { setMode(true); }, 3500);
+      }
+    }
+
+  } catch(e) {
+    showMsg('Something went wrong. Please try again.', 'error');
+  }
+
+  btn.textContent = isForgot ? 'Send Reset Link' : (isLogin ? 'Sign In' : 'Create Account');
+  btn.disabled    = false;
+}
+
+/* ══ Google OAuth ══ */
+async function handleGoogle() {
+  var btn = document.querySelector('.btn-google');
+  if (btn) { btn.textContent = 'Connecting to Google…'; btn.style.opacity = '0.7'; }
+  try {
+    var sb = await window.supabaseReady;
+    var { error } = await sb.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: 'https://impactgridanalytics.com/index.html' }
+    });
+    if (error) {
+      showMsg('Google sign-in failed: ' + error.message, 'error');
+      if (btn) { btn.innerHTML = GOOGLE_BTN_HTML; btn.style.opacity = '1'; }
+    }
+  } catch(e) {
+    showMsg('Google sign-in failed. Please try again.', 'error');
+    if (btn) { btn.innerHTML = GOOGLE_BTN_HTML; btn.style.opacity = '1'; }
+  }
+}
+
+var GOOGLE_BTN_HTML = document.querySelector('.btn-google').innerHTML;
+
+/* ══ Message helper ══ */
+function showMsg(text, type) {
+  var el = document.getElementById('errorMessage');
+  el.textContent   = text;
+  el.className     = type || '';
+  el.style.display = text ? 'block' : 'none';
+}
+</script>
+</body>
+</html>
